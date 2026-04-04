@@ -221,7 +221,7 @@ export default function AIAnalysis() {
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold neon-text text-primary mb-2" data-testid="ai-analysis-title">
+          <h2 className="text-2xl font-bold neon-text text-primary mb-2" data-testid="ai-analysis-title">
             Análises Inteligentes 🤖
           </h2>
           <p className="text-muted-foreground">
@@ -232,30 +232,30 @@ export default function AIAnalysis() {
         {/* AI Status Overview */}
         <Card className="neon-border bg-black/20">
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center">
-                <Brain className="h-12 w-12 mx-auto mb-3 text-secondary" />
-                <div className="text-2xl font-bold text-secondary neon-text" data-testid="ai-level">
+                <Brain className="h-7 w-7 mx-auto mb-2 text-secondary" />
+                <div className="text-xl font-bold text-secondary neon-text" data-testid="ai-level">
                   Nível {Math.min(10, Math.floor((userStats?.totalGames || 0) / 10) + 1)}
                 </div>
-                <div className="text-sm text-muted-foreground">Sistema IA</div>
+                <div className="text-xs text-muted-foreground">Sistema IA</div>
               </div>
 
               <div className="text-center">
-                <Activity className="h-12 w-12 mx-auto mb-3 text-primary" />
-                <div className="text-2xl font-bold text-primary neon-text" data-testid="learning-progress">
+                <Activity className="h-7 w-7 mx-auto mb-2 text-primary" />
+                <div className="text-xl font-bold text-primary neon-text" data-testid="learning-progress">
                   {aiLearningProgress}%
                 </div>
-                <div className="text-sm text-muted-foreground">Aprendizado ({userStats?.totalGames || 0} jogos)</div>
-                <Progress value={aiLearningProgress} className="mt-2 h-2" />
+                <div className="text-xs text-muted-foreground">Aprendizado ({userStats?.totalGames || 0} jogos)</div>
+                <Progress value={aiLearningProgress} className="mt-2 h-1.5" />
               </div>
 
               <div className="text-center">
-                <Target className="h-12 w-12 mx-auto mb-3 text-accent" />
-                <div className="text-2xl font-bold text-accent neon-text" data-testid="accuracy-improvement">
+                <Target className="h-7 w-7 mx-auto mb-2 text-accent" />
+                <div className="text-xl font-bold text-accent neon-text" data-testid="accuracy-improvement">
                   {userStats ? `${((userStats.wins || 0) / (userStats.totalGames || 1) * 100).toFixed(1)}%` : '0%'}
                 </div>
-                <div className="text-sm text-muted-foreground">Taxa de Acerto</div>
+                <div className="text-xs text-muted-foreground">Taxa de Acerto</div>
               </div>
             </div>
           </CardContent>
@@ -374,9 +374,9 @@ export default function AIAnalysis() {
                   </div>
                 ) : (
                   <div className="text-center text-muted-foreground py-12">
-                    <Eye className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">Nenhuma análise de padrões disponível</p>
-                    <p className="text-sm mb-6">Clique em "Nova Análise" para começar</p>
+                    <Eye className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-base mb-2">Nenhuma análise de padrões disponível</p>
+                    <p className="text-sm mb-4">Clique em "Nova Análise" para começar</p>
                   </div>
                 )}
               </CardContent>
@@ -443,7 +443,7 @@ export default function AIAnalysis() {
                             return (
                               <Badge
                                 key={index}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white ${colorClass}`}
+                                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white ${colorClass}`}
                                 data-testid={`prediction-number-${number}`}
                               >
                                 {number.toString().padStart(2, '0')}
@@ -511,9 +511,9 @@ export default function AIAnalysis() {
                   </div>
                 ) : (
                   <div className="text-center text-muted-foreground py-12">
-                    <Brain className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">Nenhuma predição disponível</p>
-                    <p className="text-sm mb-6">Clique em "Nova Predição" para gerar análise</p>
+                    <Brain className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-base mb-2">Nenhuma predição disponível</p>
+                    <p className="text-sm mb-4">Clique em "Nova Predição" para gerar análise</p>
                   </div>
                 )}
               </CardContent>

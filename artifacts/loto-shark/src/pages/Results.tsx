@@ -203,7 +203,7 @@ export default function Results() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
           <div>
-            <h2 className="text-3xl font-bold neon-text text-primary mb-2">Resultados 📊</h2>
+            <h2 className="text-2xl font-bold neon-text text-primary mb-2">Resultados 📊</h2>
             <p className="text-muted-foreground">Confira seus acertos e prêmios</p>
           </div>
           <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-white flex items-center gap-2">
@@ -219,9 +219,9 @@ export default function Results() {
             { label: "Total", val: `R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-neon-gold" }
           ].map((stat, i) => (
             <Card key={i} className="bg-black/20">
-              <CardContent className="p-4 text-center">
-                <stat.icon className={`h-8 w-8 mx-auto mb-2 ${stat.color}`} />
-                <div className={`text-2xl font-bold ${stat.color} neon-text`}>{statsLoading ? "..." : stat.val}</div>
+              <CardContent className="p-3 text-center">
+                <stat.icon className={`h-5 w-5 mx-auto mb-1.5 ${stat.color}`} />
+                <div className={`text-lg font-bold ${stat.color} neon-text`}>{statsLoading ? "..." : stat.val}</div>
                 <div className="text-xs text-muted-foreground">{stat.label}</div>
               </CardContent>
             </Card>

@@ -207,9 +207,9 @@ export default function AIProviders() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Brain className="text-cyan-400 w-7 h-7" />
+          <Brain className="text-cyan-400 w-5 h-5" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Provedores de IA</h1>
+            <h1 className="text-xl font-bold text-white">Provedores de IA</h1>
             <p className="text-sm text-gray-400">
               Configure qualquer IA — o sistema aprende qual é a melhor automaticamente
             </p>
@@ -341,7 +341,7 @@ export default function AIProviders() {
       {/* Lista de Providers */}
       {providers.length === 0 ? (
         <NeonCard className="text-center py-12">
-          <Brain className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+          <Brain className="w-8 h-8 text-gray-600 mx-auto mb-3" />
           <p className="text-gray-400">Nenhum provider configurado.</p>
           <p className="text-gray-500 text-sm mt-1">
             Adicione sua primeira chave de API acima.

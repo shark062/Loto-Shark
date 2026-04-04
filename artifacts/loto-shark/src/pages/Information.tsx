@@ -289,7 +289,7 @@ export default function Information() {
       <main className="container mx-auto px-4 py-8">
         {/* Cabeçalho */}
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold neon-text text-primary mb-2" data-testid="information-title">
+          <h2 className="text-2xl font-bold neon-text text-primary mb-2" data-testid="information-title">
             Informações 📚
           </h2>
           <p className="text-muted-foreground">
@@ -300,33 +300,33 @@ export default function Information() {
         {/* Estatísticas Rápidas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-4">
-              <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold text-primary neon-text">{lotteryData.length}</div>
+            <CardContent className="p-3">
+              <Target className="h-5 w-5 mx-auto mb-1.5 text-primary" />
+              <div className="text-lg font-bold text-primary neon-text">{lotteryData.length}</div>
               <div className="text-xs text-muted-foreground">Modalidades</div>
             </CardContent>
           </Card>
 
           <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-4">
-              <Clock className="h-8 w-8 mx-auto mb-2 text-accent" />
-              <div className="text-2xl font-bold text-accent neon-text">6x</div>
+            <CardContent className="p-3">
+              <Clock className="h-5 w-5 mx-auto mb-1.5 text-accent" />
+              <div className="text-lg font-bold text-accent neon-text">6x</div>
               <div className="text-xs text-muted-foreground">Sorteios/Semana</div>
             </CardContent>
           </Card>
 
           <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-4">
-              <DollarSign className="h-8 w-8 mx-auto mb-2 text-neon-green" />
-              <div className="text-2xl font-bold text-neon-green neon-text">R$ 2,50</div>
+            <CardContent className="p-3">
+              <DollarSign className="h-5 w-5 mx-auto mb-1.5 text-neon-green" />
+              <div className="text-lg font-bold text-neon-green neon-text">R$ 2,50</div>
               <div className="text-xs text-muted-foreground">Aposta Mínima</div>
             </CardContent>
           </Card>
 
           <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-4">
-              <Users className="h-8 w-8 mx-auto mb-2 text-secondary" />
-              <div className="text-2xl font-bold text-secondary neon-text">Milhões</div>
+            <CardContent className="p-3">
+              <Users className="h-5 w-5 mx-auto mb-1.5 text-secondary" />
+              <div className="text-lg font-bold text-secondary neon-text">Milhões</div>
               <div className="text-xs text-muted-foreground">de Apostadores</div>
             </CardContent>
           </Card>
@@ -343,31 +343,31 @@ export default function Information() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="h-8 w-8 text-primary" />
+                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Target className="h-5 w-5 text-primary" />
                 </div>
-                <h4 className="font-bold text-foreground mb-2">1. Análise de Dados</h4>
-                <p className="text-sm text-muted-foreground">
+                <h4 className="font-semibold text-foreground mb-1 text-sm">1. Análise de Dados</h4>
+                <p className="text-xs text-muted-foreground">
                   Coletamos dados oficiais da Loterias Caixa em tempo real e analisamos padrões históricos dos sorteios.
                 </p>
               </div>
 
               <div className="text-center">
-                <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Brain className="h-8 w-8 text-secondary" />
+                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Brain className="h-5 w-5 text-secondary" />
                 </div>
-                <h4 className="font-bold text-foreground mb-2">2. IA Inteligente</h4>
-                <p className="text-sm text-muted-foreground">
+                <h4 className="font-semibold text-foreground mb-1 text-sm">2. IA Inteligente</h4>
+                <p className="text-xs text-muted-foreground">
                   Nossa inteligência artificial processa estatísticas e identifica tendências para gerar estratégias otimizadas.
                 </p>
               </div>
 
               <div className="text-center">
-                <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Zap className="h-8 w-8 text-accent" />
+                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Zap className="h-5 w-5 text-accent" />
                 </div>
-                <h4 className="font-bold text-foreground mb-2">3. Geração Inteligente</h4>
-                <p className="text-sm text-muted-foreground">
+                <h4 className="font-semibold text-foreground mb-1 text-sm">3. Geração Inteligente</h4>
+                <p className="text-xs text-muted-foreground">
                   Geramos jogos baseados em números quentes, frios e estratégias mistas para maximizar suas chances.
                 </p>
               </div>
@@ -389,9 +389,9 @@ export default function Information() {
                 <AccordionItem key={lottery.id} value={lottery.id} className="border border-border/50 rounded-lg px-4">
                   <AccordionTrigger className="hover:no-underline" data-testid={`lottery-accordion-${lottery.id}`}>
                     <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{lottery.icon}</span>
+                      <span className="text-lg">{lottery.icon}</span>
                       <div className="text-left">
-                        <h3 className={`text-lg font-bold ${getPrizeColor(lottery.id)} neon-text`}>
+                        <h3 className={`text-base font-bold ${getPrizeColor(lottery.id)} neon-text`}>
                           {lottery.displayName}
                         </h3>
                         <p className="text-sm text-muted-foreground">

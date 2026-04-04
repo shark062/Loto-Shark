@@ -98,14 +98,14 @@ export default function AIMetrics() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
-              <Brain className="h-8 w-8 text-white" />
+            <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+              <Brain className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-white">
+              <h1 className="text-2xl font-bold text-white">
                 Métricas de IA Avançadas
               </h1>
-              <p className="text-purple-200 text-lg">
+              <p className="text-purple-200 text-sm">
                 Análise de Performance dos Modelos Multi-IA
               </p>
             </div>
