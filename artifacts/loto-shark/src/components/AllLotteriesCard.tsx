@@ -137,32 +137,32 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-[10px] h-7 px-1 hover:bg-transparent"
+            className="flex-1 h-6 px-0 hover:bg-transparent"
             onClick={() => setLocation(`/generator?lottery=${lottery.id}`)}
             data-testid={`quick-generate-${lottery.id}`}
+            title="Gerar jogos"
           >
-            <Zap className="h-2.5 w-2.5 mr-0.5" />
-            Gerar
+            <Zap className="h-3 w-3" />
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-[10px] h-7 px-1 hover:bg-transparent"
+            className="flex-1 h-6 px-0 hover:bg-transparent"
             onClick={() => setLocation(`/heat-map?lottery=${lottery.id}`)}
             data-testid={`quick-heatmap-${lottery.id}`}
+            title="Mapa de calor"
           >
-            <Target className="h-2.5 w-2.5 mr-0.5" />
-            Mapa
+            <Target className="h-3 w-3" />
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-[10px] h-7 px-1 hover:bg-transparent"
+            className="flex-1 h-6 px-0 hover:bg-transparent"
             onClick={() => setLocation(`/cart?lottery=${lottery.id}`)}
             data-testid={`quick-cart-${lottery.id}`}
+            title="Carrinho"
           >
-            <ShoppingCart className="h-2.5 w-2.5 mr-0.5" />
-            Carrinho
+            <ShoppingCart className="h-3 w-3" />
           </Button>
         </div>
       </CardContent>

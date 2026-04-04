@@ -39,7 +39,7 @@ export default function HeatMapGrid({
 
   if (isLoading) {
     return (
-      <Card className="bg-black/20 backdrop-blur-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="text-primary flex items-center">
             <Flame className="h-5 w-5 mr-2 text-destructive" />
@@ -51,7 +51,7 @@ export default function HeatMapGrid({
             {[...Array(60)].map((_, i) => (
               <div
                 key={i}
-                className="aspect-square bg-black/20 rounded-lg animate-pulse"
+                className="aspect-square bg-white/[0.07] rounded-lg animate-pulse"
               />
             ))}
           </div>
@@ -61,7 +61,7 @@ export default function HeatMapGrid({
   }
 
   return (
-    <Card className="bg-black/20 backdrop-blur-sm" data-testid="heat-map-grid">
+    <Card data-testid="heat-map-grid">
       <CardHeader>
         <CardTitle className="text-primary flex items-center">
           <Flame className="h-5 w-5 mr-2 text-destructive" />
@@ -70,7 +70,7 @@ export default function HeatMapGrid({
       </CardHeader>
       <CardContent>
         {/* Numbers Grid */}
-        <div className="grid grid-cols-10 gap-1.5 mb-6">
+        <div className="grid grid-cols-10 gap-2 mb-6">
           {Array.from({ length: maxNumbers }, (_, i) => {
             const number = i + 1;
             const freq = frequencies.find(f => f.number === number);
@@ -122,19 +122,19 @@ export default function HeatMapGrid({
         {/* Statistics */}
         {frequencies.length > 0 && (
           <div className="mt-6 grid grid-cols-3 gap-4 text-center">
-            <div className="bg-black/20 rounded-lg p-3">
+            <div className="bg-white/[0.07] rounded-lg p-3">
               <div className="text-2xl font-bold text-destructive">
                 {frequencies.filter(f => f.temperature === 'hot').length}
               </div>
               <div className="text-xs text-muted-foreground">Números Quentes</div>
             </div>
-            <div className="bg-black/20/10 rounded-lg p-3">
+            <div className="bg-white/[0.07]/10 rounded-lg p-3">
               <div className="text-2xl font-bold text-amber-500">
                 {frequencies.filter(f => f.temperature === 'warm').length}
               </div>
               <div className="text-xs text-muted-foreground">Números Mornos</div>
             </div>
-            <div className="bg-black/20 rounded-lg p-3">
+            <div className="bg-white/[0.07] rounded-lg p-3">
               <div className="text-2xl font-bold text-primary">
                 {frequencies.filter(f => f.temperature === 'cold').length}
               </div>

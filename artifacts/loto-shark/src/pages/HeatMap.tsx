@@ -140,7 +140,7 @@ export default function HeatMap() {
 
         {/* Temperature Statistics */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <Card className="neon-border bg-black/20">
+          <Card className="neon-border">
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center mb-2">
                 <Flame className="h-6 w-6 text-destructive mr-2" />
@@ -153,7 +153,7 @@ export default function HeatMap() {
             </CardContent>
           </Card>
 
-          <Card className="neon-border bg-black/20">
+          <Card className="neon-border">
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center mb-2">
                 <Sun className="h-6 w-6 text-amber-500 mr-2" />
@@ -166,7 +166,7 @@ export default function HeatMap() {
             </CardContent>
           </Card>
 
-          <Card className="neon-border bg-black/20">
+          <Card className="neon-border">
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center mb-2">
                 <Snowflake className="h-6 w-6 text-primary mr-2" />
@@ -195,7 +195,7 @@ export default function HeatMap() {
         {/* Analysis Panels */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Most Frequent Numbers */}
-          <Card className="neon-border bg-black/20">
+          <Card className="neon-border">
             <CardHeader>
               <CardTitle className="text-destructive flex items-center">
                 <TrendingUp className="h-5 w-5 mr-2" />
@@ -204,7 +204,7 @@ export default function HeatMap() {
             </CardHeader>
             <CardContent className="space-y-3">
               {mostFrequent.map((freq, index) => (
-                <div key={freq.number} className="flex items-center justify-between p-2 bg-black/20 rounded">
+                <div key={freq.number} className="flex items-center justify-between p-2 bg-white/[0.07] rounded">
                   <div className="flex items-center space-x-3">
                     <Badge variant="destructive" className="w-8 h-8 rounded-full flex items-center justify-center p-0">
                       {freq.number}
@@ -223,7 +223,7 @@ export default function HeatMap() {
           </Card>
 
           {/* Least Frequent Numbers */}
-          <Card className="neon-border bg-black/20">
+          <Card className="neon-border">
             <CardHeader>
               <CardTitle className="text-primary flex items-center">
                 <TrendingDown className="h-5 w-5 mr-2" />
@@ -232,9 +232,9 @@ export default function HeatMap() {
             </CardHeader>
             <CardContent className="space-y-3">
               {leastFrequent.map((freq, index) => (
-                <div key={freq.number} className="flex items-center justify-between p-2 bg-black/20 rounded">
+                <div key={freq.number} className="flex items-center justify-between p-2 bg-white/[0.07] rounded">
                   <div className="flex items-center space-x-3">
-                    <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center p-0 bg-black/20 text-primary-foreground">
+                    <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center p-0 bg-white/[0.07] text-primary-foreground">
                       {freq.number}
                     </Badge>
                     <span className="font-mono">#{index + 1}</span>
@@ -251,7 +251,7 @@ export default function HeatMap() {
           </Card>
 
           {/* Selected Number Details */}
-          <Card className="neon-border bg-black/20">
+          <Card className="neon-border">
             <CardHeader>
               <CardTitle className="text-accent flex items-center">
                 <Target className="h-5 w-5 mr-2" />
@@ -269,7 +269,7 @@ export default function HeatMap() {
                       variant="secondary" 
                       className={`${
                         getNumberDetails(selectedNumber)?.temperature === 'hot' ? 'bg-destructive' :
-                        getNumberDetails(selectedNumber)?.temperature === 'warm' ? 'bg-black/20' :
+                        getNumberDetails(selectedNumber)?.temperature === 'warm' ? 'bg-white/[0.07]' :
                         'bg-primary'
                       } text-white`}
                     >
@@ -299,7 +299,7 @@ export default function HeatMap() {
 
                   <Button 
                     onClick={() => window.location.href = `/generator?lottery=${selectedLottery}&number=${selectedNumber}`}
-                    className="w-full bg-black/20"
+                    className="w-full bg-white/[0.07]"
                     data-testid="use-in-generator-button"
                   >
                     <Zap className="h-4 w-4 mr-2" />
@@ -321,7 +321,7 @@ export default function HeatMap() {
           <div className="inline-flex gap-4">
             <Button 
               onClick={() => window.location.href = '/generator'}
-              className="bg-black/20"
+              className="bg-white/[0.07]"
               data-testid="go-to-generator-button"
             >
               <Zap className="h-4 w-4 mr-2" />
@@ -331,7 +331,7 @@ export default function HeatMap() {
             <Button 
               onClick={() => window.location.href = '/ai-analysis'}
               variant="outline"
-              className="border-secondary text-secondary hover:bg-black/20 px-6 py-3"
+              className="border-secondary text-secondary hover:bg-white/[0.07] px-6 py-3"
               data-testid="ai-analysis-button"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
