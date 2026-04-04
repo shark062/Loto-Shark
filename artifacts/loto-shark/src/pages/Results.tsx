@@ -201,28 +201,30 @@ export default function Results() {
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+        <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
           <div>
-            <h2 className="text-2xl font-bold neon-text text-primary mb-2">Resultados 📊</h2>
-            <p className="text-muted-foreground">Confira seus acertos e prêmios</p>
+            <h2 className="text-2xl font-bold neon-text text-primary mb-1">Resultados 📊</h2>
+            <p className="text-sm text-muted-foreground">Confira seus acertos e prêmios acumulados</p>
           </div>
-          <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-white flex items-center gap-2">
+          <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-white flex items-center gap-2 text-sm">
             <Download className="h-4 w-4" /> Exportar PDF
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Jogos", val: userStats?.totalGames, icon: Trophy, color: "text-primary" },
-            { label: "Prêmios", val: userStats?.wins, icon: Medal, color: "text-neon-green" },
-            { label: "Taxa", val: `${userStats?.accuracy || 0}%`, icon: BarChart3, color: "text-accent" },
-            { label: "Total", val: `R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-neon-gold" }
+            { label: "Total de Jogos", val: userStats?.totalGames ?? 0, icon: Trophy, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
+            { label: "Jogos Premiados", val: userStats?.wins ?? 0, icon: Medal, color: "text-neon-green", bg: "bg-green-500/10", border: "border-green-500/20" },
+            { label: "Taxa de Acerto", val: `${userStats?.accuracy || 0}%`, icon: BarChart3, color: "text-accent", bg: "bg-accent/10", border: "border-accent/20" },
+            { label: "Total Ganho", val: `R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20" }
           ].map((stat, i) => (
-            <Card key={i} className="bg-black/20">
-              <CardContent className="p-3 text-center">
-                <stat.icon className={`h-5 w-5 mx-auto mb-1.5 ${stat.color}`} />
-                <div className={`text-lg font-bold ${stat.color} neon-text`}>{statsLoading ? "..." : stat.val}</div>
-                <div className="text-xs text-muted-foreground">{stat.label}</div>
+            <Card key={i} className={`bg-black/20 border ${stat.border}`}>
+              <CardContent className="p-3">
+                <div className={`w-8 h-8 ${stat.bg} rounded-lg flex items-center justify-center mb-2`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
+                <div className={`text-lg font-bold ${stat.color} neon-text leading-tight`}>{statsLoading ? "–" : stat.val}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{stat.label}</div>
               </CardContent>
             </Card>
           ))}

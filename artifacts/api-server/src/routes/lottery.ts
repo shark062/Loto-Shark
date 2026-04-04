@@ -86,7 +86,6 @@ function generateNumbers(config: typeof LOTTERIES[0], strategy: string, count: n
 }
 
 function getNextDrawDate(drawDays: string[], drawTime: string) {
-  const dayNames = ['domingo', 'segunda', 'terça', 'ter', 'quarta', 'quinta', 'sexta', 'sábado', 'seg', 'qua', 'qui', 'sex', 'sáb'];
   const dayMap: Record<string, number> = {
     'domingo': 0, 'sunday': 0,
     'segunda': 1, 'segunda-feira': 1, 'seg': 1, 'monday': 1,
@@ -96,25 +95,33 @@ function getNextDrawDate(drawDays: string[], drawTime: string) {
     'sexta': 5, 'sex': 5, 'friday': 5,
     'sábado': 6, 'sabado': 6, 'sáb': 6, 'saturday': 6,
   };
-  
+
   const now = new Date();
   const today = now.getDay();
-  
+  const [h, m] = drawTime.split(':').map(Number);
+
   const drawDayNumbers = drawDays.map(d => dayMap[d.toLowerCase()] ?? -1).filter(d => d >= 0);
   if (drawDayNumbers.length === 0) drawDayNumbers.push(3);
-  
+
+  // Se hoje é dia de sorteio e ainda não passou do horário, o próximo sorteio é hoje
+  if (drawDayNumbers.includes(today)) {
+    const todayDraw = new Date(now);
+    todayDraw.setHours(h, m, 0, 0);
+    if (now < todayDraw) return todayDraw;
+  }
+
+  // Encontra o próximo dia de sorteio
   let daysUntilNext = 7;
   for (const dayNum of drawDayNumbers) {
     let diff = dayNum - today;
     if (diff <= 0) diff += 7;
     if (diff < daysUntilNext) daysUntilNext = diff;
   }
-  
+
   const next = new Date(now);
   next.setDate(now.getDate() + daysUntilNext);
-  const [h, m] = drawTime.split(':').map(Number);
   next.setHours(h, m, 0, 0);
-  
+
   return next;
 }
 
