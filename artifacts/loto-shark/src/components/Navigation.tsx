@@ -183,11 +183,11 @@ export default function Navigation() {
                 <div className="w-1.5 h-1.5 bg-neon-green rounded-full"></div>
                 <span className="font-mono">Dados Oficiais Caixa</span>
               </div>
-              <div className="flex items-center space-x-1 bg-black/20 text-secondary px-2 py-1 rounded-full border border-secondary/30">
+              <div className="flex items-center space-x-1 bg-[rgba(5,5,20,0.35)] backdrop-blur-lg text-secondary px-2 py-1 rounded-full border border-secondary/30">
                 <Brain className="w-3 h-3" />
                 <span className="font-mono">IA Ativa</span>
               </div>
-              <div className="flex items-center space-x-1 bg-black/20 text-accent px-2 py-1 rounded-full border border-accent/30">
+              <div className="flex items-center space-x-1 bg-[rgba(5,5,20,0.35)] backdrop-blur-lg text-accent px-2 py-1 rounded-full border border-accent/30">
                 <BarChart3 className="w-3 h-3" />
                 <span className="font-mono">Análise em Tempo Real</span>
               </div>
@@ -204,7 +204,7 @@ export default function Navigation() {
       {/* Full Screen Menu Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/95 z-[60] backdrop-blur-md"
+          className="fixed inset-0 bg-[rgba(5,5,20,0.35)] z-[60] backdrop-blur-xl"
           data-testid="menu-overlay"
         >
           <div className="container mx-auto px-4 py-8 h-full overflow-y-auto">
@@ -289,10 +289,10 @@ export default function Navigation() {
                 size="sm"
                 className={`w-full shadow-lg group relative rounded-3xl ${
                   action.variant === "primary"
-                    ? "bg-black/25"
+                    ? "bg-[rgba(5,5,20,0.35)]"
                     : action.variant === "secondary"
-                    ? "bg-black/25"
-                    : "border-2 border-dashed border-primary/30 hover:border-primary hover:bg-black/25"
+                    ? "bg-[rgba(5,5,20,0.35)]"
+                    : "border-2 border-dashed border-primary/30 hover:border-primary hover:bg-[rgba(5,5,20,0.35)]"
                 }`}
                 data-testid={`quick-action-${action.label.toLowerCase().replace(/\s+/g, '-')}`}
                 title={action.tooltip}
@@ -310,7 +310,7 @@ export default function Navigation() {
           })}
 
           {/* Status Indicator */}
-          <div className="mt-4 p-3 bg-black/25 border border-border/50 rounded-3xl backdrop-blur-sm">
+          <div className="mt-4 p-3 bg-[rgba(5,5,20,0.35)] border border-white/10 rounded-2xl backdrop-blur-lg">
             <div className="text-xs text-center space-y-1">
               <div className="flex items-center justify-center space-x-1 text-neon-green">
                 <div className="w-2 h-2 bg-neon-green rounded-full"></div>
