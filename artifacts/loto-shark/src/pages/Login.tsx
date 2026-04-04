@@ -56,7 +56,7 @@ export default function Login() {
       <Card className="w-full max-w-md bg-black/40 border-primary/30">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Zap className="h-12 w-12 text-primary neon-glow" />
+            <Zap className="h-7 w-7 text-primary neon-glow" />
           </div>
           <CardTitle className="text-2xl neon-text text-primary">Shark Loterias</CardTitle>
           <CardDescription>Entre em sua conta</CardDescription>

@@ -96,10 +96,10 @@ export default function HeatMap() {
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold neon-text text-primary mb-2" data-testid="heatmap-title">
+          <h2 className="text-2xl font-bold neon-text text-primary mb-2" data-testid="heatmap-title">
             Mapa de Calor 🔥❄️♨️
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Análise de frequência dos números sorteados
           </p>
         </div>
@@ -142,40 +142,40 @@ export default function HeatMap() {
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="neon-border">
             <CardContent className="p-4 text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Flame className="h-6 w-6 text-destructive mr-2" />
-                <span className="text-2xl">🔥</span>
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <Flame className="h-4 w-4 text-destructive" />
+                <span className="text-base">🔥</span>
               </div>
-              <div className="text-3xl font-bold text-destructive neon-text" data-testid="hot-count">
+              <div className="text-xl font-bold text-destructive neon-text" data-testid="hot-count">
                 {stats.hot}
               </div>
-              <div className="text-sm text-muted-foreground">Números Quentes</div>
+              <div className="text-xs text-muted-foreground">Números Quentes</div>
             </CardContent>
           </Card>
 
           <Card className="neon-border">
             <CardContent className="p-4 text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Sun className="h-6 w-6 text-amber-500 mr-2" />
-                <span className="text-2xl">♨️</span>
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <Sun className="h-4 w-4 text-amber-500" />
+                <span className="text-base">♨️</span>
               </div>
-              <div className="text-3xl font-bold text-amber-500" data-testid="warm-count">
+              <div className="text-xl font-bold text-amber-500" data-testid="warm-count">
                 {stats.warm}
               </div>
-              <div className="text-sm text-muted-foreground">Números Mornos</div>
+              <div className="text-xs text-muted-foreground">Números Mornos</div>
             </CardContent>
           </Card>
 
           <Card className="neon-border">
             <CardContent className="p-4 text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Snowflake className="h-6 w-6 text-primary mr-2" />
-                <span className="text-2xl">❄️</span>
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <Snowflake className="h-4 w-4 text-primary" />
+                <span className="text-base">❄️</span>
               </div>
-              <div className="text-3xl font-bold text-primary neon-text" data-testid="cold-count">
+              <div className="text-xl font-bold text-primary neon-text" data-testid="cold-count">
                 {stats.cold}
               </div>
-              <div className="text-sm text-muted-foreground">Números Frios</div>
+              <div className="text-xs text-muted-foreground">Números Frios</div>
             </CardContent>
           </Card>
         </div>
@@ -262,7 +262,7 @@ export default function HeatMap() {
               {selectedNumber ? (
                 <div className="space-y-4">
                   <div className="text-center">
-                    <div className="text-6xl font-bold text-accent neon-text mb-2" data-testid="selected-number">
+                    <div className="text-4xl font-bold text-accent neon-text mb-2" data-testid="selected-number">
                       {selectedNumber.toString().padStart(2, '0')}
                     </div>
                     <Badge 
@@ -308,8 +308,8 @@ export default function HeatMap() {
                 </div>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
-                  <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Clique em um número para ver os detalhes</p>
+                  <Target className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">Clique em um número para ver os detalhes</p>
                 </div>
               )}
             </CardContent>

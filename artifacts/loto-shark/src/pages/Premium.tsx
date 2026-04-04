@@ -63,11 +63,11 @@ export default function Premium() {
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold neon-text text-primary mb-4 flex items-center justify-center">
-            <Crown className="h-10 w-10 mr-3 text-neon-gold" />
+          <h1 className="text-2xl font-bold neon-text text-primary mb-3 flex items-center justify-center gap-2">
+            <Crown className="h-6 w-6 text-neon-gold" />
             Planos Premium
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
             {isPremium ? '✨ Você é Premium!' : 'Desbloqueie recursos avançados de análise e previsão'}
           </p>
         </div>
@@ -78,14 +78,14 @@ export default function Premium() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold text-neon-gold mb-1">Status Premium Ativo</h3>
+                  <h3 className="text-base font-bold text-neon-gold mb-1">Status Premium Ativo</h3>
                   <p className="text-muted-foreground">
                     {user?.subscriptionExpires
                       ? `Válido até ${new Date(user.subscriptionExpires).toLocaleDateString('pt-BR')}`
                       : 'Acesso vitalício'}
                   </p>
                 </div>
-                <Badge className="bg-neon-gold text-black text-lg px-4 py-2">
+                <Badge className="bg-neon-gold text-black text-sm px-3 py-1.5">
                   <Check className="h-4 w-4 mr-2" />
                   Ativo
                 </Badge>
@@ -104,7 +104,7 @@ export default function Premium() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <div className="text-3xl font-bold text-primary">R$ 0</div>
+                <div className="text-2xl font-bold text-primary">R$ 0</div>
                 <p className="text-sm text-muted-foreground">para sempre</p>
               </div>
 
@@ -139,7 +139,7 @@ export default function Premium() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <div className="text-3xl font-bold text-primary">R$ 29</div>
+                <div className="text-2xl font-bold text-primary">R$ 29</div>
                 <p className="text-sm text-muted-foreground">/mês</p>
               </div>
 
@@ -178,7 +178,7 @@ export default function Premium() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <div className="text-3xl font-bold text-neon-gold">R$ 199</div>
+                <div className="text-2xl font-bold text-neon-gold">R$ 199</div>
                 <p className="text-sm text-muted-foreground">uma vez</p>
               </div>
 
@@ -265,7 +265,7 @@ export default function Premium() {
         {/* CTA */}
         {!isPremium && (
           <div className="mt-12 text-center p-8 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/20">
-            <h3 className="text-2xl font-bold mb-3">Pronto para evoluir?</h3>
+            <h3 className="text-xl font-bold mb-3">Pronto para evoluir?</h3>
             <p className="text-muted-foreground mb-6">
               Desbloqueie análises profissionais e simulações avançadas
             </p>

@@ -47,7 +47,7 @@ export default function HeatMapGrid({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-10 gap-2 mb-4">
+          <div className="grid grid-cols-10 gap-2.5 mb-4">
             {[...Array(60)].map((_, i) => (
               <div
                 key={i}
@@ -70,7 +70,7 @@ export default function HeatMapGrid({
       </CardHeader>
       <CardContent>
         {/* Numbers Grid */}
-        <div className="grid grid-cols-10 gap-2 mb-6">
+        <div className="grid grid-cols-10 gap-2.5 mb-6">
           {Array.from({ length: maxNumbers }, (_, i) => {
             const number = i + 1;
             const freq = frequencies.find(f => f.number === number);
@@ -80,7 +80,7 @@ export default function HeatMapGrid({
               <button
                 key={number}
                 onClick={() => onNumberClick?.(number)}
-                className={`aspect-square ${style} rounded-2xl flex items-center justify-center font-bold text-sm shadow-md hover:scale-105 transition-all duration-200 cursor-pointer border-2`}
+                className={`aspect-square ${style} rounded-xl flex items-center justify-center font-bold text-xs shadow-md hover:scale-105 transition-all duration-200 cursor-pointer border`}
                 title={`Número ${number} - ${freq?.frequency || 0} vezes - ${freq?.temperature || 'cold'}`}
                 data-testid={`number-${number}`}
                 data-temperature={freq?.temperature || 'cold'}
@@ -121,24 +121,24 @@ export default function HeatMapGrid({
 
         {/* Statistics */}
         {frequencies.length > 0 && (
-          <div className="mt-6 grid grid-cols-3 gap-4 text-center">
-            <div className="bg-white/[0.07] rounded-lg p-3">
-              <div className="text-2xl font-bold text-destructive">
+          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+            <div className="bg-white/[0.07] rounded-lg p-2.5">
+              <div className="text-lg font-bold text-destructive">
                 {frequencies.filter(f => f.temperature === 'hot').length}
               </div>
-              <div className="text-xs text-muted-foreground">Números Quentes</div>
+              <div className="text-xs text-muted-foreground">Quentes</div>
             </div>
-            <div className="bg-white/[0.07]/10 rounded-lg p-3">
-              <div className="text-2xl font-bold text-amber-500">
+            <div className="bg-white/[0.07] rounded-lg p-2.5">
+              <div className="text-lg font-bold text-amber-500">
                 {frequencies.filter(f => f.temperature === 'warm').length}
               </div>
-              <div className="text-xs text-muted-foreground">Números Mornos</div>
+              <div className="text-xs text-muted-foreground">Mornos</div>
             </div>
-            <div className="bg-white/[0.07] rounded-lg p-3">
-              <div className="text-2xl font-bold text-primary">
+            <div className="bg-white/[0.07] rounded-lg p-2.5">
+              <div className="text-lg font-bold text-primary">
                 {frequencies.filter(f => f.temperature === 'cold').length}
               </div>
-              <div className="text-xs text-muted-foreground">Números Frios</div>
+              <div className="text-xs text-muted-foreground">Frios</div>
             </div>
           </div>
         )}
