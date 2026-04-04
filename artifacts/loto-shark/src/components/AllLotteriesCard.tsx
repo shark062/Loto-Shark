@@ -79,18 +79,13 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
     return (
       <Card className="border border-white/10 animate-pulse">
         <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-muted/20 rounded-full shrink-0"></div>
-            <div className="flex-1">
-              <div className="h-4 bg-muted/20 rounded mb-2 w-1/3"></div>
-              <div className="h-3 bg-muted/20 rounded mb-2 w-1/4"></div>
-              <div className="h-5 bg-muted/20 rounded w-1/2"></div>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <div className="h-8 w-8 bg-muted/20 rounded"></div>
-              <div className="h-8 w-8 bg-muted/20 rounded"></div>
-              <div className="h-8 w-8 bg-muted/20 rounded"></div>
-            </div>
+          <div className="h-16 bg-muted/20 rounded mb-3"></div>
+          <div className="h-3 bg-muted/20 rounded mb-2"></div>
+          <div className="h-3 bg-muted/20 rounded mb-4"></div>
+          <div className="flex gap-2">
+            <div className="h-8 bg-muted/20 rounded flex-1"></div>
+            <div className="h-8 bg-muted/20 rounded flex-1"></div>
+            <div className="h-8 bg-muted/20 rounded flex-1"></div>
           </div>
         </CardContent>
       </Card>
@@ -98,82 +93,78 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
   }
 
   return (
-    <Card className="border border-white/10 hover:border-white/20 transition-all duration-300 relative overflow-hidden group">
+    <Card className="border border-white/10 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden group">
       <CardContent className="p-4 relative z-10">
-        <div className="flex items-center gap-4">
-          {/* Emoji + Nome */}
-          <div className="flex items-center gap-3 w-36 shrink-0">
-            <span className="text-2xl">{getEmojiForLottery(lottery.id)}</span>
-            <div>
-              <h3 className="font-bold text-sm text-foreground leading-tight" data-testid={`lottery-name-${lottery.id}`}>
-                {lottery.displayName}
-              </h3>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {lottery.minNumbers}–{lottery.maxNumbers} de {lottery.totalNumbers}
-              </p>
-            </div>
-          </div>
+        <div className="text-center mb-3">
+          <div className="text-2xl mb-1.5">{getEmojiForLottery(lottery.id)}</div>
+          <h3 className="font-semibold text-base text-foreground mb-1 leading-tight" data-testid={`lottery-name-${lottery.id}`}>
+            {lottery.displayName}
+          </h3>
+          <p className="text-xs text-muted-foreground leading-tight">
+            {lottery.minNumbers}-{lottery.maxNumbers} nums • {lottery.totalNumbers} disp.
+          </p>
+        </div>
 
-          {/* Prêmio + Countdown */}
-          <div className="flex-1 min-w-0">
-            {nextDraw ? (
-              <>
-                <div className={`text-base font-bold ${getPrizeColor(lottery.id)} neon-text leading-tight`} data-testid={`lottery-prize-${lottery.id}`}>
-                  {formatPrize(nextDraw.estimatedPrize)}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">#{nextDraw.contestNumber}</span>
-                  </div>
-                  {nextDraw.timeRemaining && (
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-yellow-400 animate-pulse" />
-                      <span className="text-[10px] font-mono text-yellow-400 font-semibold">
-                        {String(nextDraw.timeRemaining.days).padStart(2, '0')}d {String(nextDraw.timeRemaining.hours).padStart(2, '0')}h {String(nextDraw.timeRemaining.minutes).padStart(2, '0')}m
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="text-sm text-muted-foreground">Carregando...</div>
-            )}
-          </div>
+        <div className="space-y-1.5 mb-4 text-center">
+          {nextDraw ? (
+            <>
+              <div className="flex items-center justify-center space-x-1.5">
+                <Calendar className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Concurso #{nextDraw.contestNumber}
+                </span>
+              </div>
 
-          {/* Quick Actions */}
-          <div className="flex gap-1 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setLocation(`/generator?lottery=${lottery.id}`)}
-              data-testid={`quick-generate-${lottery.id}`}
-              title="Gerar jogos"
-            >
-              <Zap className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setLocation(`/heat-map?lottery=${lottery.id}`)}
-              data-testid={`quick-heatmap-${lottery.id}`}
-              title="Mapa de calor"
-            >
-              <Target className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => setLocation(`/cart?lottery=${lottery.id}`)}
-              data-testid={`quick-cart-${lottery.id}`}
-              title="Carrinho"
-            >
-              <ShoppingCart className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+              <div className={`text-base font-bold ${getPrizeColor(lottery.id)} neon-text`} data-testid={`lottery-prize-${lottery.id}`}>
+                {formatPrize(nextDraw.estimatedPrize)}
+              </div>
+
+              {nextDraw.timeRemaining && (
+                <div className="flex items-center justify-center space-x-1.5">
+                  <Clock className="h-3 w-3 text-yellow-400 animate-pulse" />
+                  <span className="text-xs font-mono text-yellow-400 font-bold">
+                    {String(nextDraw.timeRemaining.days).padStart(2, '0')}d {String(nextDraw.timeRemaining.hours).padStart(2, '0')}h {String(nextDraw.timeRemaining.minutes).padStart(2, '0')}m
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">Carregando dados...</div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex gap-2 pt-2 border-t border-border/30">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 px-0 hover:bg-transparent"
+            onClick={() => setLocation(`/generator?lottery=${lottery.id}`)}
+            data-testid={`quick-generate-${lottery.id}`}
+            title="Gerar jogos"
+          >
+            <Zap className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 px-0 hover:bg-transparent"
+            onClick={() => setLocation(`/heat-map?lottery=${lottery.id}`)}
+            data-testid={`quick-heatmap-${lottery.id}`}
+            title="Mapa de calor"
+          >
+            <Target className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1 h-8 px-0 hover:bg-transparent"
+            onClick={() => setLocation(`/cart?lottery=${lottery.id}`)}
+            data-testid={`quick-cart-${lottery.id}`}
+            title="Carrinho"
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </CardContent>
     </Card>
