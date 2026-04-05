@@ -240,8 +240,8 @@ export default function AIProviders() {
             { label: "Melhor IA", value: stats.best, icon: TrendingUp, color: "text-yellow-400" },
             { label: "Chamadas", value: stats.totalCalls, icon: Brain, color: "text-purple-400" },
           ].map(({ label, value, icon: Icon, color }) => (
-            <NeonCard key={label} className="p-3 text-center">
-              <Icon className={`w-5 h-5 mx-auto mb-1 ${color}`} />
+            <NeonCard key={label} className="p-3 flex flex-col items-center text-center">
+              <Icon className={`w-5 h-5 mb-1 ${color}`} />
               <div className="text-lg font-bold text-white">{value}</div>
               <div className="text-xs text-gray-400">{label}</div>
             </NeonCard>

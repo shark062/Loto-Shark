@@ -299,33 +299,33 @@ export default function Information() {
 
         {/* Estatísticas Rápidas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-3">
-              <Target className="h-5 w-5 mx-auto mb-1.5 text-primary" />
+          <Card className="neon-border bg-black/20">
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <Target className="h-5 w-5 mb-1.5 text-primary" />
               <div className="text-lg font-bold text-primary neon-text">{lotteryData.length}</div>
               <div className="text-xs text-muted-foreground">Modalidades</div>
             </CardContent>
           </Card>
 
-          <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-3">
-              <Clock className="h-5 w-5 mx-auto mb-1.5 text-accent" />
+          <Card className="neon-border bg-black/20">
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <Clock className="h-5 w-5 mb-1.5 text-accent" />
               <div className="text-lg font-bold text-accent neon-text">6x</div>
               <div className="text-xs text-muted-foreground">Sorteios/Semana</div>
             </CardContent>
           </Card>
 
-          <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-3">
-              <DollarSign className="h-5 w-5 mx-auto mb-1.5 text-neon-green" />
+          <Card className="neon-border bg-black/20">
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <DollarSign className="h-5 w-5 mb-1.5 text-neon-green" />
               <div className="text-lg font-bold text-neon-green neon-text">R$ 2,50</div>
               <div className="text-xs text-muted-foreground">Aposta Mínima</div>
             </CardContent>
           </Card>
 
-          <Card className="neon-border bg-black/20 text-center">
-            <CardContent className="p-3">
-              <Users className="h-5 w-5 mx-auto mb-1.5 text-secondary" />
+          <Card className="neon-border bg-black/20">
+            <CardContent className="p-3 flex flex-col items-center text-center">
+              <Users className="h-5 w-5 mb-1.5 text-secondary" />
               <div className="text-lg font-bold text-secondary neon-text">Milhões</div>
               <div className="text-xs text-muted-foreground">de Apostadores</div>
             </CardContent>
@@ -342,8 +342,8 @@ export default function Information() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mb-3">
                   <Target className="h-5 w-5 text-primary" />
                 </div>
                 <h4 className="font-semibold text-foreground mb-1 text-sm">1. Análise de Dados</h4>
@@ -352,8 +352,8 @@ export default function Information() {
                 </p>
               </div>
 
-              <div className="text-center">
-                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mb-3">
                   <Brain className="h-5 w-5 text-secondary" />
                 </div>
                 <h4 className="font-semibold text-foreground mb-1 text-sm">2. IA Inteligente</h4>
@@ -362,8 +362,8 @@ export default function Information() {
                 </p>
               </div>
 
-              <div className="text-center">
-                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mb-3">
                   <Zap className="h-5 w-5 text-accent" />
                 </div>
                 <h4 className="font-semibold text-foreground mb-1 text-sm">3. Geração Inteligente</h4>

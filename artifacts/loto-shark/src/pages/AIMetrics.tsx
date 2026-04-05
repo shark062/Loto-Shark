@@ -140,12 +140,12 @@ export default function AIMetrics() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="bg-slate-800/50 border-purple-500/20">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-white flex items-center justify-center gap-2">
                     <Target className="h-5 w-5 text-emerald-400" />
                     Modelo Principal
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col items-center text-center">
                   <div className="text-2xl font-bold text-emerald-400">
                     {optimalCombination?.primaryModel || "DeepSeek"}
                   </div>
@@ -154,26 +154,26 @@ export default function AIMetrics() {
                   </p>
                   <Progress 
                     value={(optimalCombination?.expectedAccuracy || 0.25) * 100} 
-                    className="mt-4"
+                    className="mt-4 w-full"
                   />
                 </CardContent>
               </Card>
 
               <Card className="bg-slate-800/50 border-purple-500/20">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-white flex items-center justify-center gap-2">
                     <Activity className="h-5 w-5 text-blue-400" />
                     Modelos Ativos
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col items-center text-center">
                   <div className="text-2xl font-bold text-blue-400">
                     {metaAnalysis?.rankings?.length || 4}
                   </div>
                   <p className="text-purple-200 text-sm mt-2">
                     Trabalhando em ensemble
                   </p>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex flex-wrap gap-2 mt-4 justify-center">
                     {optimalCombination?.supportingModels?.slice(0, 3).map((model: string) => (
                       <Badge key={model} variant="outline" className="text-blue-200 border-blue-500/30">
                         {model}
@@ -185,12 +185,12 @@ export default function AIMetrics() {
 
               <Card className="bg-slate-800/50 border-purple-500/20">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="text-white flex items-center justify-center gap-2">
                     <Award className="h-5 w-5 text-yellow-400" />
                     Melhor Accuracy
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col items-center text-center">
                   <div className="text-2xl font-bold text-yellow-400">
                     {metaAnalysis?.rankings?.[0]?.accuracy 
                       ? (metaAnalysis.rankings[0].accuracy * 100).toFixed(1) 
@@ -199,10 +199,10 @@ export default function AIMetrics() {
                   <p className="text-purple-200 text-sm mt-2">
                     {metaAnalysis?.rankings?.[0]?.modelName || "OpenAI GPT-4"}
                   </p>
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-4 space-y-2 w-full">
                     {metaAnalysis?.rankings?.[0]?.strengths?.slice(0, 2).map((strength: string, i: number) => (
-                      <div key={i} className="flex items-center gap-2 text-sm text-purple-200">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <div key={i} className="flex items-center justify-center gap-2 text-sm text-purple-200">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                         {strength}
                       </div>
                     ))}

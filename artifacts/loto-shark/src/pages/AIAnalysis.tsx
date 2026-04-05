@@ -233,25 +233,25 @@ export default function AIAnalysis() {
         <Card className="neon-border bg-black/20">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center">
-                <Brain className="h-7 w-7 mx-auto mb-2 text-secondary" />
+              <div className="flex flex-col items-center text-center">
+                <Brain className="h-7 w-7 mb-2 text-secondary" />
                 <div className="text-xl font-bold text-secondary neon-text" data-testid="ai-level">
                   Nível {Math.min(10, Math.floor((userStats?.totalGames || 0) / 10) + 1)}
                 </div>
                 <div className="text-xs text-muted-foreground">Sistema IA</div>
               </div>
 
-              <div className="text-center">
-                <Activity className="h-7 w-7 mx-auto mb-2 text-primary" />
+              <div className="flex flex-col items-center text-center">
+                <Activity className="h-7 w-7 mb-2 text-primary" />
                 <div className="text-xl font-bold text-primary neon-text" data-testid="learning-progress">
                   {aiLearningProgress}%
                 </div>
                 <div className="text-xs text-muted-foreground">Aprendizado ({userStats?.totalGames || 0} jogos)</div>
-                <Progress value={aiLearningProgress} className="mt-2 h-1.5" />
+                <Progress value={aiLearningProgress} className="mt-2 h-1.5 w-full" />
               </div>
 
-              <div className="text-center">
-                <Target className="h-7 w-7 mx-auto mb-2 text-accent" />
+              <div className="flex flex-col items-center text-center">
+                <Target className="h-7 w-7 mb-2 text-accent" />
                 <div className="text-xl font-bold text-accent neon-text" data-testid="accuracy-improvement">
                   {userStats ? `${((userStats.wins || 0) / (userStats.totalGames || 1) * 100).toFixed(1)}%` : '0%'}
                 </div>
