@@ -57,9 +57,39 @@ Loto Shark is a Brazilian lottery analysis platform with a cyberpunk/neon visual
 ## Supported Lotteries
 Mega-Sena, Lotofácil, Quina, Lotomania, Dupla Sena, Timemania, Dia de Sorte, Super Sete
 
+## AI Ensemble System (artifacts/api-server/src/lib/)
+
+### aiEnsemble.ts — Core engine
+- `runEnsemble(ctx)` — Runs all providers in **parallel**, each com papel especializado:
+  - **Groq** → `frequency_analyst` (ultra-rápido, quentes/frios)
+  - **OpenAI** → `statistical_predictor` (probabilidade Bayesiana)
+  - **DeepSeek** → `mathematical_analyzer` (soma, paridade, consecutivos)
+  - **Gemini** → `pattern_recognizer` (padrões em sequências)
+  - **Anthropic** → `strategy_advisor` (raciocínio estratégico profundo)
+  - **OpenRouter** → `ensemble_judge` (meta-análise, constrói consenso)
+- `callWithFallback(prompt, system, role)` — Chama providers em cadeia com fallback automático
+- Sistema de **votação ponderada**: peso = roleWeight × performanceWeight × confidence
+
+### aiProviders.ts — Provider management
+- Providers carregados automaticamente das env vars
+- `providers` Map exportada para aiEnsemble.ts
+- `recalcPriorities()` atualiza ranking por taxa de sucesso e latência
+
+## API Endpoints (novos)
+- `GET /api/prediction/generate/:id` — Ensemble prediction com todas as IAs
+- `POST /api/prediction/ensemble` — Multi-game ensemble
+- `GET /api/ai/analysis/:id?type=prediction|pattern|strategy` — Análise com IA + cache 5min
+- `POST /api/ai/analyze` — Invalida cache da análise
+- `GET /api/ai/metrics` — Métricas dos providers
+- `POST /api/chat` — Chat com IA real (detecta comandos + persona automática)
+- `GET /api/meta-reasoning/analyze/:id` — Rankings dos providers por loteria
+- `GET /api/meta-reasoning/optimal-combination/:id` — Combinação ótima via ensemble
+- `GET/PUT/DELETE /api/ai-providers/:id` — CRUD de providers
+
 ## Important Notes
 - `shared/routes.ts` is browser-safe (no drizzle-orm imports) — uses plain Zod schemas
 - `shared/schema.ts` has drizzle imports and should NOT be imported in frontend code
 - The frontend fetches live data via queryKey-based URLs joined with "/"
 - User data is in-memory on the API server (no persistent database)
 - CSS uses Tailwind v4 with `@theme inline` mapping to CSS variables
+- AI keys loaded from env: OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY
