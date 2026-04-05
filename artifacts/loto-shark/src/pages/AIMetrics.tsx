@@ -101,9 +101,9 @@ export default function AIMetrics() {
             <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
               <Brain className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold neon-text text-primary">
               Métricas de IA Avançadas
-            </h1>
+            </h2>
           </div>
           <p className="text-purple-200 text-sm mb-4">
             Análise de Performance dos Modelos Multi-IA

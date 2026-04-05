@@ -265,6 +265,13 @@ input, textarea {
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 12px !important;
   color: rgba(255, 255, 255, 0.95) !important;
+  color-scheme: dark;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+  opacity: 1 !important;
 }
 
 select,
@@ -274,6 +281,7 @@ select,
   -webkit-backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 12px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 [role="listbox"],
@@ -287,9 +295,12 @@ select,
 }
 
 /* Placeholder visível nos selects e dropdowns */
+[data-placeholder],
 [data-placeholder] span,
 [data-placeholder] > span,
-[role="combobox"][data-placeholder] {
+span[data-placeholder],
+[role="combobox"][data-placeholder],
+[role="combobox"] span[data-placeholder] {
   color: rgba(255, 255, 255, 0.5) !important;
   opacity: 1 !important;
 }
@@ -392,6 +403,12 @@ select,
     opacity: 0.3;
     filter: blur(2px);
   }
+}
+
+/* Override global min-height for number grid buttons (HeatMap, Generator cartela) */
+.number-grid button {
+  min-height: unset !important;
+  min-width: unset !important;
 }
 
 /* Override global min-height for SelectShark dropdown items */

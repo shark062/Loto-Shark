@@ -437,7 +437,7 @@ export default function Generator() {
 
                       {/* Grid de números - Cartela estilo mapa de calor */}
                       <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 mb-3 border border-white/20 shadow-lg">
-                        <div className="grid grid-cols-10 gap-1.5">
+                        <div className="number-grid grid grid-cols-10 gap-1.5">
                           {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
                             const number = i + 1;
                             const isSelected = selectedNumbers.includes(number);

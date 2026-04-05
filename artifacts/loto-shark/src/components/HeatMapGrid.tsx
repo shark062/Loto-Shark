@@ -47,7 +47,7 @@ export default function HeatMapGrid({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-10 gap-2.5 mb-4">
+          <div className="number-grid grid grid-cols-10 gap-1.5 mb-4">
             {[...Array(60)].map((_, i) => (
               <div
                 key={i}
@@ -71,12 +71,7 @@ export default function HeatMapGrid({
       <CardContent>
         {/* Numbers Grid */}
         <div
-          className="mb-6"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(10, 1fr)",
-            gap: "10px",
-          }}
+          className="number-grid mb-6 grid grid-cols-10 gap-1.5"
         >
           {Array.from({ length: maxNumbers }, (_, i) => {
             const number = i + 1;
@@ -87,7 +82,7 @@ export default function HeatMapGrid({
               <button
                 key={number}
                 onClick={() => onNumberClick?.(number)}
-                className={`aspect-square ${style} rounded-xl flex items-center justify-center font-bold text-xs shadow-md hover:scale-110 hover:shadow-lg transition-all duration-200 cursor-pointer border`}
+                className={`aspect-square ${style} rounded-lg flex items-center justify-center font-bold text-[10px] shadow-sm hover:scale-105 transition-all duration-200 cursor-pointer border`}
                 title={`Número ${number} - ${freq?.frequency || 0} vezes - ${freq?.temperature || 'cold'}`}
                 data-testid={`number-${number}`}
                 data-temperature={freq?.temperature || 'cold'}
