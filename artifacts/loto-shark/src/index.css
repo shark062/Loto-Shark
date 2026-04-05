@@ -262,6 +262,8 @@ input, textarea, select,
   background-color: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
 }
 
 [role="listbox"],
@@ -274,6 +276,14 @@ input, textarea, select,
   border-radius: 12px !important;
 }
 
+/* Placeholder visível nos selects e dropdowns */
+[data-placeholder] span,
+[data-placeholder] > span,
+[role="combobox"][data-placeholder] {
+  color: rgba(255, 255, 255, 0.5) !important;
+  opacity: 1 !important;
+}
+
 .bg-black\/25,
 .bg-black\/20,
 .bg-black\/30,
@@ -283,6 +293,17 @@ input, textarea, select,
   background-color: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+}
+
+/* Classe utilitária de vidro fosco para uso direto nos componentes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
 }
 
 @layer components {

@@ -264,10 +264,8 @@ export default function AIAnalysis() {
         {/* Controls */}
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
           <Select value={selectedLottery} onValueChange={setSelectedLottery}>
-            <SelectTrigger className="w-64 neon-border bg-black/20 text-white">
-              <SelectValue>
-                {lotteryTypes?.find(l => l.id === selectedLottery)?.displayName || "Selecione a modalidade"}
-              </SelectValue>
+            <SelectTrigger className="w-64 neon-border glass-panel text-white">
+              <SelectValue placeholder="Selecione a modalidade" />
             </SelectTrigger>
             <SelectContent className="neon-border">
               {lotteryTypes?.map((lottery) => (
