@@ -121,7 +121,7 @@ export const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     maxNumbers: 15,
     totalNumbers: 50,
     drawDays: ['Ter', 'Qui', 'Sáb'],
-    drawTime: '19:30',
+    drawTime: '20:00',
     isActive: true,
     apiEndpoint: 'duplasena',
     prizeCategories: [
@@ -141,7 +141,7 @@ export const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     maxNumbers: 21,
     totalNumbers: 10,
     drawDays: ['Ter', 'Qui', 'Sáb'],
-    drawTime: '15:00',
+    drawTime: '20:00',
     isActive: true,
     apiEndpoint: 'supersete',
     prizeCategories: [
