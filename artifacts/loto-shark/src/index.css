@@ -151,21 +151,22 @@ button, a, input, select {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.5);
-  border-radius: 4px;
+  background: rgba(0, 255, 204, 0.35);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.8);
+  background: rgba(0, 255, 204, 0.65);
 }
 
 :root {
@@ -384,21 +385,60 @@ input, textarea, select,
   }
 }
 
-::-webkit-scrollbar {
-  width: 8px;
+/* Override global min-height for SelectShark dropdown items */
+.select-shark-list button,
+.select-shark-dropdown button {
+  min-height: unset !important;
+  min-width: unset !important;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--muted);
+/* SelectShark dropdown scrollbar */
+.select-shark-list::-webkit-scrollbar {
+  width: 4px;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
+.select-shark-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+.select-shark-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 204, 0.4);
+  border-radius: 999px;
+}
+
+.select-shark-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 204, 0.7);
+}
+
+.select-shark-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 204, 0.4) transparent;
+}
+
+/* Radix select viewport scrollbar */
+.shark-select-viewport::-webkit-scrollbar {
+  width: 4px;
+}
+
+.shark-select-viewport::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+}
+
+.shark-select-viewport::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 204, 0.4);
+  border-radius: 999px;
+}
+
+.shark-select-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 204, 0.7);
+}
+
+.shark-select-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 255, 204, 0.4) transparent;
+  overflow-y: auto;
 }
 
 ::selection {

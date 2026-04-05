@@ -5,6 +5,7 @@ import { useGenerateNumbers, useSaveGame } from "@/hooks/use-lottery";
 import { Flame, Snowflake, Sparkles, Shuffle, Save, CheckCircle, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { SelectShark } from "@/components/ui/SelectShark";
 
 type Strategy = "hot" | "cold" | "mixed" | "random";
 
@@ -64,16 +65,16 @@ export default function Generate() {
           <NeonCard glowColor="primary" className="space-y-6">
             <div className="space-y-3">
               <label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Game Type</label>
-              <select 
+              <SelectShark
                 value={gameType}
-                onChange={(e) => setGameType(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-center text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-              >
-                <option value="mega-sena">Mega-Sena</option>
-                <option value="lotofacil">Lotofácil</option>
-                <option value="quina">Quina</option>
-                <option value="lotomania">Lotomania</option>
-              </select>
+                onChange={setGameType}
+                options={[
+                  { value: "mega-sena", label: "Mega-Sena" },
+                  { value: "lotofacil", label: "Lotofácil" },
+                  { value: "quina", label: "Quina" },
+                  { value: "lotomania", label: "Lotomania" },
+                ]}
+              />
             </div>
 
             <div className="space-y-3">

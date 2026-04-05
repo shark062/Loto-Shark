@@ -4,6 +4,7 @@ import { Brain, Plus, Trash2, TestTube, CheckCircle, XCircle,
 import { Button } from "@/components/ui/button";
 import { NeonCard } from "@/components/NeonCard";
 import Navigation from "@/components/Navigation";
+import { SelectShark } from "@/components/ui/SelectShark";
 
 // ── Tipos ────────────────────────────────────────────────────
 
@@ -259,15 +260,11 @@ export default function AIProviders() {
             {/* Tipo */}
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Provedor</label>
-              <select
-                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+              <SelectShark
                 value={form.type}
-                onChange={(e) => onTypeChange(e.target.value as AIProviderType)}
-              >
-                {PROVIDER_TYPES.map((t) => (
-                  <option key={t.type} value={t.type}>{t.label}</option>
-                ))}
-              </select>
+                onChange={(v) => onTypeChange(v as AIProviderType)}
+                options={PROVIDER_TYPES.map((t) => ({ value: t.type, label: t.label }))}
+              />
             </div>
 
             {/* Nome */}
@@ -299,15 +296,11 @@ export default function AIProviders() {
             {/* Modelo */}
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Modelo</label>
-              <select
-                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+              <SelectShark
                 value={form.model}
-                onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-              >
-                {typeInfo(form.type)?.models.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, model: v }))}
+                options={(typeInfo(form.type)?.models || []).map((m) => ({ value: m, label: m }))}
+              />
             </div>
 
             {/* Base URL (somente custom/openrouter) */}
