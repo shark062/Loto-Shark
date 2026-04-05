@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Loto-Shark"
+title = "Loto Shark"
 version = "1.0.0"
 id = "artifacts/loto-shark"
 router = "path"

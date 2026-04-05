@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Loto Shark"
+version = "1.0.0"
+id = "loto-shark"
+
+[[services]]
+localPort = 23571
+name = "Loto Shark"
+paths = ["/"]
+
+[services.development]
+run = "PORT=23571 BASE_PATH=/ pnpm --filter @workspace/loto-shark run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/loto-shark", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+BASE_PATH = "/"
+
+[services.production.run]
+args = ["node", "artifacts/loto-shark/dist"]
+serve = "static"
+dir = "artifacts/loto-shark/dist"
