@@ -96,34 +96,34 @@ export default function AIMetrics() {
       
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-6">
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center gap-3 mb-2">
             <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
               <Brain className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                Métricas de IA Avançadas
-              </h1>
-              <p className="text-purple-200 text-sm">
-                Análise de Performance dos Modelos Multi-IA
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold text-white">
+              Métricas de IA Avançadas
+            </h1>
           </div>
+          <p className="text-purple-200 text-sm mb-4">
+            Análise de Performance dos Modelos Multi-IA
+          </p>
 
           {/* Lottery Selector */}
-          <Select value={selectedLottery} onValueChange={setSelectedLottery}>
-            <SelectTrigger className="w-64 bg-slate-800/50 border-purple-500/20 text-white data-[placeholder]:text-muted-foreground">
-              <SelectValue placeholder="Selecione a modalidade" />
-            </SelectTrigger>
-            <SelectContent>
-              {lotteryTypes?.map((lottery) => (
-                <SelectItem key={lottery.id} value={lottery.id}>
-                  {lottery.displayName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex justify-center">
+            <Select value={selectedLottery} onValueChange={setSelectedLottery}>
+              <SelectTrigger className="w-64 bg-slate-800/50 border-purple-500/20 text-white data-[placeholder]:text-muted-foreground">
+                <SelectValue placeholder="Selecione a modalidade" />
+              </SelectTrigger>
+              <SelectContent>
+                {lotteryTypes?.map((lottery) => (
+                  <SelectItem key={lottery.id} value={lottery.id}>
+                    {lottery.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Main Content */}

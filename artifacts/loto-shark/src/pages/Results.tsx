@@ -201,14 +201,14 @@ export default function Results() {
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-          <div>
-            <h2 className="text-2xl font-bold neon-text text-primary mb-1">Resultados 📊</h2>
-            <p className="text-sm text-muted-foreground">Confira seus acertos e prêmios acumulados</p>
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold neon-text text-primary mb-1">Resultados 📊</h2>
+          <p className="text-sm text-muted-foreground">Confira seus acertos e prêmios acumulados</p>
+          <div className="flex justify-center mt-3">
+            <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-white flex items-center gap-2 text-sm">
+              <Download className="h-4 w-4" /> Exportar PDF
+            </Button>
           </div>
-          <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-white flex items-center gap-2 text-sm">
-            <Download className="h-4 w-4" /> Exportar PDF
-          </Button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -219,7 +219,7 @@ export default function Results() {
             { label: "Total Ganho", val: `R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20" }
           ].map((stat, i) => (
             <Card key={i} className={`bg-black/20 border ${stat.border}`}>
-              <CardContent className="p-3">
+              <CardContent className="p-3 flex flex-col items-center text-center">
                 <div className={`w-8 h-8 ${stat.bg} rounded-lg flex items-center justify-center mb-2`}>
                   <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>

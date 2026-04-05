@@ -3,6 +3,7 @@ import { Brain, Plus, Trash2, TestTube, CheckCircle, XCircle,
          TrendingUp, Zap, Shield, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NeonCard } from "@/components/NeonCard";
+import Navigation from "@/components/Navigation";
 
 // ── Tipos ────────────────────────────────────────────────────
 
@@ -202,20 +203,20 @@ export default function AIProviders() {
   // ── Render ─────────────────────────────────────────────────
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="text-center mb-6">
+        <div className="flex items-center justify-center gap-2 mb-1">
           <Brain className="text-cyan-400 w-5 h-5" />
-          <div>
-            <h1 className="text-xl font-bold text-white">Provedores de IA</h1>
-            <p className="text-sm text-gray-400">
-              Configure qualquer IA — o sistema aprende qual é a melhor automaticamente
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-white">Provedores de IA</h1>
         </div>
-        <div className="flex gap-2">
+        <p className="text-sm text-gray-400 mb-3">
+          Configure qualquer IA — o sistema aprende qual é a melhor automaticamente
+        </p>
+        <div className="flex items-center justify-center gap-2">
           <Button size="sm" variant="ghost" onClick={fetchData}>
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -479,5 +480,6 @@ export default function AIProviders() {
         </div>
       )}
     </div>
+    </>
   );
 }
