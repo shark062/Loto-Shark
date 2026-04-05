@@ -258,10 +258,18 @@ button, a, input, select {
 }
 
 input, textarea, select,
-[role="combobox"], [role="listbox"],
+[role="combobox"] {
+  background-color: rgba(10, 10, 38, 0.55) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+[role="listbox"],
 [data-radix-popper-content-wrapper],
 .popover-content, [role="dialog"] {
-  background-color: rgba(8, 8, 28, 0.92) !important;
+  background-color: rgba(10, 10, 38, 0.80) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
 }
 
 .bg-black\/25,
