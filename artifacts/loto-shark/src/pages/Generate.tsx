@@ -67,7 +67,7 @@ export default function Generate() {
               <select 
                 value={gameType}
                 onChange={(e) => setGameType(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
               >
                 <option value="mega-sena">Mega-Sena</option>
                 <option value="lotofacil">Lotofácil</option>
@@ -103,7 +103,7 @@ export default function Generate() {
                 max="50"
                 value={amountOfGames}
                 onChange={(e) => setAmountOfGames(Number(e.target.value))}
-                className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white focus:border-primary focus:outline-none transition-colors"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary focus:outline-none transition-colors"
               />
             </div>
 
