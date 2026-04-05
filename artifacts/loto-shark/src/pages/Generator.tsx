@@ -28,17 +28,47 @@ import {
   Target,
   Settings,
   CheckCircle2,
-  Trash2
+  Trash2,
+  Shuffle,
+  Info
 } from "lucide-react";
 import type { UserGame, LotteryType } from "@/types/lottery";
 import BettingPlatformIntegration from "@/components/BettingPlatformIntegration";
 
 const generateGameSchema = z.object({
   lotteryId: z.string().min(1, "Selecione uma modalidade"),
-  numbersCount: z.number().min(1, "Quantidade de dezenas inválida"),
-  gamesCount: z.number().min(1, "Quantidade de jogos inválida"),
-  strategy: z.enum(['hot', 'cold', 'mixed', 'ai', 'manual']),
+  numbersCount: z.number().min(1).optional(),
+  gamesCount: z.number().min(1).optional(),
+  strategy: z.enum(['hot', 'cold', 'mixed', 'ai', 'manual', 'desdobramento']),
+}).superRefine((data, ctx) => {
+  if (!['manual', 'desdobramento'].includes(data.strategy)) {
+    if (!data.numbersCount || data.numbersCount < 1) ctx.addIssue({ code: 'custom', message: 'Informe a quantidade de dezenas', path: ['numbersCount'] });
+    if (!data.gamesCount  || data.gamesCount  < 1) ctx.addIssue({ code: 'custom', message: 'Informe a quantidade de jogos',   path: ['gamesCount']  });
+  }
 });
+
+function binomial(n: number, k: number): number {
+  if (k > n || k < 0) return 0;
+  if (k === 0 || k === n) return 1;
+  let r = 1;
+  for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+  return Math.round(r);
+}
+
+function getCombinations(arr: number[], k: number): number[][] {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  const [first, ...rest] = arr;
+  return [
+    ...getCombinations(rest, k - 1).map(c => [first, ...c]),
+    ...getCombinations(rest, k),
+  ];
+}
+
+const LOTTERY_PRICES: Record<string, number> = {
+  megasena: 5.00, lotofacil: 3.00, quina: 2.50, lotomania: 3.00,
+  duplasena: 2.50, timemania: 3.50, diadesorte: 2.50, supersete: 2.50,
+};
 
 type GenerateGameForm = z.infer<typeof generateGameSchema>;
 
@@ -148,26 +178,33 @@ export default function Generator() {
   });
 
   const onSubmit = async (data: GenerateGameForm) => {
-    // Modo manual: salvar números selecionados
+    // Modo manual
     if (data.strategy === 'manual') {
       if (selectedNumbers.length === 0) {
-        toast({
-          title: "Selecione números",
-          description: `Selecione pelo menos 1 número.`,
-          variant: "destructive"
-        });
+        toast({ title: "Selecione números", description: "Selecione pelo menos 1 número.", variant: "destructive" });
         return;
       }
+      setGeneratedGames([{ numbers: selectedNumbers, strategy: 'manual' }]);
+      toast({ title: "Jogo criado!", description: "Seus números foram selecionados com sucesso." });
+      return;
+    }
 
-      setGeneratedGames([{
-        numbers: selectedNumbers,
-        strategy: 'manual'
-      }]);
-      
-      toast({
-        title: "Jogo criado!",
-        description: "Seus números foram selecionados com sucesso."
-      });
+    // Modo desdobramento
+    if (data.strategy === 'desdobramento') {
+      if (!selectedLottery) { toast({ title: "Selecione a modalidade", variant: "destructive" }); return; }
+      const min = selectedLottery.minNumbers;
+      if (selectedNumbers.length < min) {
+        toast({ title: "Selecione mais números", description: `Mínimo: ${min} dezenas para ${selectedLottery.displayName}.`, variant: "destructive" });
+        return;
+      }
+      const count = binomial(selectedNumbers.length, min);
+      if (count > 500) {
+        toast({ title: "Limite excedido", description: `${count} jogos excedem o limite de 500. Reduza a seleção.`, variant: "destructive" });
+        return;
+      }
+      const combos = getCombinations(selectedNumbers, min);
+      setGeneratedGames(combos.map(c => ({ numbers: c, strategy: 'desdobramento' })));
+      toast({ title: "Desdobramento gerado! 🔀", description: `${combos.length} jogos criados com ${selectedNumbers.length} dezenas selecionadas.` });
       return;
     }
 
@@ -239,6 +276,13 @@ export default function Generator() {
         name: 'Escolha Manual',
         description: 'Selecione seus próprios números',
         color: 'text-accent',
+      },
+      desdobramento: {
+        icon: <Shuffle className="h-4 w-4 text-emerald-400" />,
+        emoji: '🔀',
+        name: 'Desdobramento',
+        description: 'Escolha mais dezenas e gere todas as combinações possíveis',
+        color: 'text-emerald-400',
       },
     };
     return strategies[strategy as keyof typeof strategies] || strategies.mixed;
@@ -331,36 +375,38 @@ export default function Generator() {
                   )}
                 </div>
 
-                {/* Numbers Count */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="flex items-center text-sm font-medium text-foreground mb-2">
-                      <Dice6 className="h-4 w-4 mr-2 text-accent" />
-                      Dezenas
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder=""
-                      {...form.register('numbersCount', { valueAsNumber: true })}
-                      className="bg-input border-border"
-                      data-testid="numbers-count-input"
-                    />
-                  </div>
+                {/* Numbers Count — hidden for manual/desdobramento modes */}
+                {form.watch('strategy') !== 'manual' && form.watch('strategy') !== 'desdobramento' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="flex items-center text-sm font-medium text-foreground mb-2">
+                        <Dice6 className="h-4 w-4 mr-2 text-accent" />
+                        Dezenas
+                      </Label>
+                      <Input
+                        type="number"
+                        placeholder=""
+                        {...form.register('numbersCount', { valueAsNumber: true })}
+                        className="bg-input border-border"
+                        data-testid="numbers-count-input"
+                      />
+                    </div>
 
-                  <div>
-                    <Label className="flex items-center text-sm font-medium text-foreground mb-2">
-                      <Copy className="h-4 w-4 mr-2 text-secondary" />
-                      Qtd. Jogos
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder=""
-                      {...form.register('gamesCount', { valueAsNumber: true })}
-                      className="bg-input border-border"
-                      data-testid="games-count-input"
-                    />
+                    <div>
+                      <Label className="flex items-center text-sm font-medium text-foreground mb-2">
+                        <Copy className="h-4 w-4 mr-2 text-secondary" />
+                        Qtd. Jogos
+                      </Label>
+                      <Input
+                        type="number"
+                        placeholder=""
+                        {...form.register('gamesCount', { valueAsNumber: true })}
+                        className="bg-input border-border"
+                        data-testid="games-count-input"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Strategy Selection */}
                 <div>
@@ -369,7 +415,7 @@ export default function Generator() {
                     Estratégia de Números
                   </Label>
                   <div className="space-y-2">
-                    {(['hot', 'cold', 'mixed', 'ai', 'manual'] as const).map((strategy) => {
+                    {(['hot', 'cold', 'mixed', 'ai', 'manual', 'desdobramento'] as const).map((strategy) => {
                       const info = getStrategyInfo(strategy);
                       const isSelected = form.watch('strategy') === strategy;
 
@@ -536,8 +582,103 @@ export default function Generator() {
                   </Card>
                 )}
 
+                {/* Desdobramento Number Selection */}
+                {form.watch('strategy') === 'desdobramento' && selectedLottery && (() => {
+                  const min = selectedLottery.minNumbers;
+                  const n = selectedNumbers.length;
+                  const combos = n >= min ? binomial(n, min) : 0;
+                  const price = LOTTERY_PRICES[selectedLottery.id] || 3.00;
+                  const tooMany = combos > 500;
+                  return (
+                    <Card className="bg-black/20 border-emerald-500/30">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="font-medium text-emerald-400 flex items-center">
+                            <Shuffle className="h-4 w-4 mr-2" />
+                            Cartela – {selectedLottery.displayName}
+                          </h5>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-400">
+                              {n} dezenas
+                            </Badge>
+                            {selectedNumbers.length > 0 && (
+                              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}
+                                className="h-6 text-xs text-muted-foreground hover:text-destructive px-2">
+                                <Trash2 className="h-3 w-3 mr-1" />Limpar
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Combo preview banner */}
+                        <div className={`rounded-xl p-2.5 mb-3 border text-center text-sm font-semibold ${
+                          tooMany ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                          : n < min ? 'bg-white/5 border-white/10 text-muted-foreground'
+                          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        }`}>
+                          {n < min
+                            ? `Selecione pelo menos ${min} dezenas (ainda faltam ${min - n})`
+                            : tooMany
+                            ? `⚠️ ${combos} combinações excedem o limite de 500 — remova alguns números`
+                            : `🔀 ${n} dezenas → ${combos} jogos • Custo est. R$ ${(combos * price).toFixed(2).replace('.', ',')}`
+                          }
+                        </div>
+
+                        {/* Number grid */}
+                        <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 mb-3 border border-white/20">
+                          <div className="number-grid grid grid-cols-10 gap-1.5">
+                            {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
+                              const number = i + 1;
+                              const isSel = selectedNumbers.includes(number);
+                              const freq = getNumberFrequency(number);
+                              const temp = freq?.temperature || 'cold';
+                              return (
+                                <button key={number} type="button" onClick={() => toggleNumber(number)}
+                                  className={`relative aspect-square rounded-lg text-xs font-bold transition-all duration-200 border flex items-center justify-center
+                                    ${isSel
+                                      ? temp === 'hot'  ? 'bg-red-500/90 border-red-400 text-white shadow-lg shadow-red-500/50 scale-110 z-10'
+                                      : temp === 'warm' ? 'bg-yellow-500/90 border-yellow-400 text-white shadow-lg shadow-yellow-500/50 scale-110 z-10'
+                                      :                   'bg-emerald-500/90 border-emerald-400 text-white shadow-lg shadow-emerald-500/50 scale-110 z-10'
+                                      : 'bg-black/40 border-white/20 text-white/70 hover:bg-white/20 hover:border-white/40 hover:text-white hover:scale-105'
+                                    }`}>
+                                  <span className={isSel ? 'font-extrabold' : ''}>{number.toString().padStart(2, '0')}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Selected numbers pills */}
+                        {selectedNumbers.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {selectedNumbers.map(num => {
+                              const freq = getNumberFrequency(num);
+                              const temp = freq?.temperature || 'cold';
+                              return (
+                                <div key={num} className={`px-2.5 py-1 rounded-lg text-sm font-bold shadow-md
+                                  ${temp === 'hot' ? 'bg-red-500 text-white' : temp === 'warm' ? 'bg-yellow-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                                  {num.toString().padStart(2, '0')}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Legend */}
+                        <div className="bg-black/20 rounded-lg p-2 border border-white/10">
+                          <div className="flex justify-center gap-4 text-xs">
+                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-500"></div><span>🔥 Quentes</span></div>
+                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-500"></div><span>♨️ Mornos</span></div>
+                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-500"></div><span>❄️ Frios</span></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+
                 {/* Strategy Details */}
-                {form.watch('strategy') && form.watch('strategy') !== 'manual' && (
+                {form.watch('strategy') && form.watch('strategy') !== 'manual' && form.watch('strategy') !== 'desdobramento' && (
                   <Card className="bg-black/20">
                     <CardContent className="p-3">
                       <h5 className="font-medium text-accent mb-2 flex items-center">
@@ -598,13 +739,13 @@ export default function Generator() {
                           <div className="text-sm text-muted-foreground">
                             <div className="flex items-center mb-2">
                               <Brain className="h-4 w-4 mr-2 text-secondary" />
-                              <span className="font-medium">Inteligência artificial avançada</span>
+                              <span className="font-medium">Análise estatística multivariável</span>
                             </div>
                             <ul className="space-y-1 ml-6">
-                              <li>• Analisa padrões complexos nos dados históricos</li>
-                              <li>• Considera múltiplas variáveis simultâneas</li>
-                              <li>• Algoritmo de machine learning otimizado</li>
-                              <li>• Recomendado para jogadores experientes</li>
+                              <li>• Frequência real dos últimos 20 sorteios da Caixa</li>
+                              <li>• Equilíbrio par/ímpar próximo de 50%</li>
+                              <li>• Soma total dentro da faixa estatística esperada</li>
+                              <li>• Evita sequências consecutivas excessivas</li>
                             </ul>
                           </div>
                         )}
@@ -617,19 +758,21 @@ export default function Generator() {
                 <Button
                   type="submit"
                   disabled={isGenerating || !selectedLotteryId}
-                  className="w-full bg-black/20 hover:bg-primary/20 border border-primary/50 text-white"
+                  className={`w-full border text-white ${
+                    form.watch('strategy') === 'desdobramento'
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/50'
+                      : 'bg-black/20 hover:bg-primary/20 border-primary/50'
+                  }`}
                   data-testid="generate-games-button"
                 >
                   {isGenerating ? (
-                    <>
-                      <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                      GERANDO JOGOS...
-                    </>
+                    <><RefreshCw className="h-5 w-5 mr-2 animate-spin" />GERANDO JOGOS...</>
+                  ) : form.watch('strategy') === 'desdobramento' ? (
+                    <><Shuffle className="h-5 w-5 mr-2" />GERAR DESDOBRAMENTO</>
+                  ) : form.watch('strategy') === 'manual' ? (
+                    <><Target className="h-5 w-5 mr-2" />CONFIRMAR JOGO MANUAL</>
                   ) : (
-                    <>
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      GERAR JOGOS INTELIGENTES
-                    </>
+                    <><Sparkles className="h-5 w-5 mr-2" />GERAR JOGOS INTELIGENTES</>
                   )}
                 </Button>
               </form>

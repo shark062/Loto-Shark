@@ -45,6 +45,7 @@ export interface NumberFrequency {
   number: number;
   frequency: number;
   percentage: number;
+  temperature: 'hot' | 'warm' | 'cold';
   lastDrawn?: string;
   isHot?: boolean;
   isCold?: boolean;

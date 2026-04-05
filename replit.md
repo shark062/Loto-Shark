@@ -21,7 +21,9 @@ Loto Shark is a Brazilian lottery analysis platform with a cyberpunk/neon visual
 ### Backend (artifacts/api-server/)
 - **Framework**: Express.js + TypeScript (compiled with esbuild)
 - **Real Data**: Fetches live lottery results from Caixa Econômica Federal API (`servicebus2.caixa.gov.br/portaldeloterias/api`)
-- **Fallback**: `loteriascaixa-api.herokuapp.com/api` for API availability
+- **Historical Data**: `artifacts/api-server/src/lib/lotteryData.ts` — fetches last 20 draws per lottery and caches for 2h
+- **Smart Generation**: `POST /api/games/generate` uses real frequency data; strategies: hot/cold/mixed/ai (statistical analysis)
+- **Desdobramento**: Client-side combination generator (getCombinations) — picks a pool, generates all C(n,k) combos ≤500
 
 ### Key Paths
 - `artifacts/loto-shark/src/pages/` — 12 pages (Home, HeatMap, Generator, Results, AIAnalysis, AIMetrics, Information, AdvancedDashboard, Login, Register, AIProviders, Premium)

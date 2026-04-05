@@ -1,37 +1,7 @@
 import { Router } from "express";
+import { LOTTERIES, fetchLatestDraw, fetchHistoricalDraws, computeFrequencies } from "../lib/lotteryData";
 
 const router = Router();
-
-const LOTTERIES = [
-  { id: 'megasena', name: 'megasena', displayName: 'Mega-Sena', emoji: '💎', minNumbers: 6, maxNumbers: 15, totalNumbers: 60, drawDays: ['Terça', 'Quinta', 'Sábado'], drawTime: '21:00', isActive: true },
-  { id: 'lotofacil', name: 'lotofacil', displayName: 'Lotofácil', emoji: '⭐', minNumbers: 15, maxNumbers: 20, totalNumbers: 25, drawDays: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'], drawTime: '21:00', isActive: true },
-  { id: 'quina', name: 'quina', displayName: 'Quina', emoji: '🪙', minNumbers: 5, maxNumbers: 15, totalNumbers: 80, drawDays: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'], drawTime: '21:00', isActive: true },
-  { id: 'lotomania', name: 'lotomania', displayName: 'Lotomania', emoji: '♾️', minNumbers: 50, maxNumbers: 50, totalNumbers: 100, drawDays: ['Seg', 'Qua', 'Sex'], drawTime: '21:00', isActive: true },
-  { id: 'duplasena', name: 'duplasena', displayName: 'Dupla Sena', emoji: '👑', minNumbers: 6, maxNumbers: 15, totalNumbers: 50, drawDays: ['Ter', 'Qui', 'Sáb'], drawTime: '21:00', isActive: true },
-  { id: 'timemania', name: 'timemania', displayName: 'Timemania', emoji: '⚽', minNumbers: 10, maxNumbers: 10, totalNumbers: 80, drawDays: ['Ter', 'Qui', 'Sáb'], drawTime: '21:00', isActive: true },
-  { id: 'diadesorte', name: 'diadesorte', displayName: 'Dia de Sorte', emoji: '🍀', minNumbers: 7, maxNumbers: 15, totalNumbers: 31, drawDays: ['Ter', 'Qui', 'Sáb'], drawTime: '21:00', isActive: true },
-  { id: 'supersete', name: 'supersete', displayName: 'Super Sete', emoji: '7️⃣', minNumbers: 7, maxNumbers: 7, totalNumbers: 10, drawDays: ['Ter', 'Qui', 'Sáb'], drawTime: '21:00', isActive: true },
-];
-
-const CAIXA_API = 'https://servicebus2.caixa.gov.br/portaldeloterias/api';
-const FALLBACK_API = 'https://loteriascaixa-api.herokuapp.com/api';
-
-async function fetchLatestDraw(lotteryId: string) {
-  try {
-    const resp = await fetch(`${CAIXA_API}/${lotteryId}`, {
-      headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      return data;
-    }
-  } catch {}
-  try {
-    const resp = await fetch(`${FALLBACK_API}/${lotteryId}/latest`);
-    if (resp.ok) return await resp.json();
-  } catch {}
-  return null;
-}
 
 function normalizeDrawData(data: any, lotteryId: string) {
   if (!data) return null;
@@ -46,43 +16,6 @@ function normalizeDrawData(data: any, lotteryId: string) {
     nextContestNumber: (data.numero || 1) + 1,
     estimatedPrize: data.valorEstimadoProximoConcurso || 'R$ 0,00',
   };
-}
-
-function generateNumberFrequencies(totalNumbers: number, recentDraws: number[][]) {
-  const freq: Record<number, number> = {};
-  for (let i = 1; i <= totalNumbers; i++) freq[i] = 0;
-  
-  recentDraws.forEach(draw => {
-    draw.forEach(num => {
-      if (freq[num] !== undefined) freq[num]++;
-    });
-  });
-
-  const maxFreq = Math.max(...Object.values(freq), 1);
-  const sortedByFreq = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-  const hotThreshold = sortedByFreq[Math.floor(sortedByFreq.length * 0.2)][1];
-  const coldThreshold = sortedByFreq[Math.floor(sortedByFreq.length * 0.8)][1];
-
-  return Object.entries(freq).map(([num, frequency]) => ({
-    number: parseInt(num),
-    frequency,
-    percentage: Math.round((frequency / (recentDraws.length || 1)) * 100),
-    isHot: frequency >= hotThreshold,
-    isCold: frequency <= coldThreshold,
-  }));
-}
-
-function generateNumbers(config: typeof LOTTERIES[0], strategy: string, count: number) {
-  const total = config.totalNumbers;
-  const min = strategy === 'lotofacil' ? config.minNumbers : config.minNumbers;
-  const qty = Math.min(count, config.minNumbers);
-  
-  const numbers: number[] = [];
-  while (numbers.length < qty) {
-    const n = Math.floor(Math.random() * total) + 1;
-    if (!numbers.includes(n)) numbers.push(n);
-  }
-  return numbers.sort((a, b) => a - b);
 }
 
 function getNextDrawDate(drawDays: string[], drawTime: string) {
@@ -194,15 +127,27 @@ router.get("/:id/next-draw", async (req, res) => {
 router.get("/:id/frequency", async (req, res) => {
   const lottery = LOTTERIES.find(l => l.id === req.params.id);
   if (!lottery) return res.status(404).json({ message: 'Lottery not found' });
-  
+
   try {
-    const data = await fetchLatestDraw(req.params.id);
-    const drawnNumbers = data?.dezenas?.map(Number) || data?.listaDezenas?.map(Number) || [];
-    const frequencies = generateNumberFrequencies(lottery.totalNumbers, drawnNumbers.length > 0 ? [drawnNumbers] : []);
+    const draws = await fetchHistoricalDraws(req.params.id, 20);
+    const frequencies = computeFrequencies(lottery.totalNumbers, draws);
     res.json(frequencies);
   } catch {
-    const frequencies = generateNumberFrequencies(lottery.totalNumbers, []);
-    res.json(frequencies);
+    res.json(computeFrequencies(lottery.totalNumbers, []));
+  }
+});
+
+// GET /api/lotteries/:id/history
+router.get("/:id/history", async (req, res) => {
+  const lottery = LOTTERIES.find(l => l.id === req.params.id);
+  if (!lottery) return res.status(404).json({ message: 'Lottery not found' });
+
+  try {
+    const count = Math.min(parseInt(req.query.count as string) || 20, 50);
+    const draws = await fetchHistoricalDraws(req.params.id, count);
+    res.json({ lotteryId: req.params.id, drawCount: draws.length, draws });
+  } catch {
+    res.json({ lotteryId: req.params.id, drawCount: 0, draws: [] });
   }
 });
 
