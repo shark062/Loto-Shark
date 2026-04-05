@@ -269,7 +269,7 @@ export default function AIAnalysis() {
                 {lotteryTypes?.find(l => l.id === selectedLottery)?.displayName || "Selecione a modalidade"}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="neon-border bg-black/95">
+            <SelectContent className="neon-border">
               {lotteryTypes?.map((lottery) => (
                 <SelectItem key={lottery.id} value={lottery.id} className="text-white hover:bg-primary/20">
                   {lottery.displayName}
