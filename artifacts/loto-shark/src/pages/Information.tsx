@@ -235,6 +235,23 @@ const getTipsForLottery = (id: string) => {
   ];
 };
 
+const getMinBetForLottery = (id: string): string => {
+  const minBets: Record<string, string> = {
+    megasena:    'R$ 5,00',
+    lotofacil:   'R$ 3,00',
+    quina:       'R$ 2,50',
+    lotomania:   'R$ 3,00',
+    duplasena:   'R$ 2,50',
+    timemania:   'R$ 3,50',
+    diadesorte:  'R$ 2,50',
+    supersete:   'R$ 2,50',
+    milionaria:  'R$ 6,00',
+    maismilionaria: 'R$ 6,00',
+    loteca:      'R$ 1,50',
+  };
+  return minBets[id] ?? 'R$ 2,50';
+};
+
 const getDrawDaysInPortuguese = (drawDays: string[]) => {
   const dayTranslation: Record<string, string> = {
     'Monday': 'Segunda',
@@ -279,7 +296,7 @@ export default function Information() {
     categories: getCategoriesForLottery(lottery.id),
     description: getDescriptionForLottery(lottery.id),
     tips: getTipsForLottery(lottery.id),
-    minBet: 'R$ 2,50' // Aposta mínima padrão
+    minBet: getMinBetForLottery(lottery.id)
   })) || [];
 
   return (
