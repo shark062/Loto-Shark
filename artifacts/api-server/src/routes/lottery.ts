@@ -29,18 +29,25 @@ function getNextDrawDate(drawDays: string[], drawTime: string) {
     'sábado': 6, 'sabado': 6, 'sáb': 6, 'saturday': 6,
   };
 
+  // Horário de Brasília = UTC-3
+  const BRAZIL_OFFSET_MS = 3 * 60 * 60 * 1000;
   const now = new Date();
-  const today = now.getDay();
+  const brazilNow = new Date(now.getTime() - BRAZIL_OFFSET_MS);
+  const today = brazilNow.getUTCDay();
   const [h, m] = drawTime.split(':').map(Number);
 
   const drawDayNumbers = drawDays.map(d => dayMap[d.toLowerCase()] ?? -1).filter(d => d >= 0);
   if (drawDayNumbers.length === 0) drawDayNumbers.push(3);
 
-  // Se hoje é dia de sorteio e ainda não passou do horário, o próximo sorteio é hoje
+  // Se hoje é dia de sorteio e ainda não passou o horário em Brasília
   if (drawDayNumbers.includes(today)) {
-    const todayDraw = new Date(now);
-    todayDraw.setHours(h, m, 0, 0);
-    if (now < todayDraw) return todayDraw;
+    const brazilH = brazilNow.getUTCHours();
+    const brazilMin = brazilNow.getUTCMinutes();
+    if (brazilH < h || (brazilH === h && brazilMin < m)) {
+      const todayDraw = new Date(now);
+      todayDraw.setUTCHours(h + 3, m, 0, 0); // 20:00 BRT = 23:00 UTC
+      return todayDraw;
+    }
   }
 
   // Encontra o próximo dia de sorteio
@@ -51,9 +58,9 @@ function getNextDrawDate(drawDays: string[], drawTime: string) {
     if (diff < daysUntilNext) daysUntilNext = diff;
   }
 
-  const next = new Date(now);
-  next.setDate(now.getDate() + daysUntilNext);
-  next.setHours(h, m, 0, 0);
+  const next = new Date(brazilNow);
+  next.setUTCDate(brazilNow.getUTCDate() + daysUntilNext);
+  next.setUTCHours(h + 3, m, 0, 0); // 20:00 BRT = 23:00 UTC
 
   return next;
 }

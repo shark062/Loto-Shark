@@ -26,16 +26,19 @@ function formatPrize(value: string | number | undefined): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(num);
 }
 
-function formatDrawDate(isoDate: string): string {
+function formatDrawDate(isoDate: string, drawTime?: string): string {
   const d = new Date(isoDate);
   const now = new Date();
+  // Usa o drawTime fixo da loteria (já em horário de Brasília) em vez de
+  // converter o ISO UTC para local, evitando o deslocamento UTC-3
+  const timeStr = drawTime ?? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const isToday = d.toDateString() === now.toDateString();
-  if (isToday) return `Hoje às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  if (isToday) return `Hoje às ${timeStr}`;
   const tomorrow = new Date(now);
   tomorrow.setDate(now.getDate() + 1);
-  if (d.toDateString() === tomorrow.toDateString()) return `Amanhã às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `Amanhã às ${timeStr}`;
   return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) +
-    ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    ' às ' + timeStr;
 }
 
 const LOTTERY_CONFIG: Record<string, {
@@ -124,7 +127,7 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
               {nextDraw?.drawDate && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {formatDrawDate(nextDraw.drawDate)}
+                  {formatDrawDate(nextDraw.drawDate, nextDraw.drawTime)}
                 </span>
               )}
             </div>
