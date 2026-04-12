@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Loto Shark"
+version = "1.0.0"
+id = "artifacts/loto-shark"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23571
+
+[services.development]
+run = "pnpm --filter @workspace/loto-shark run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/loto-shark", "run", "build" ]
+publicDir = "artifacts/loto-shark/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23571"
+BASE_PATH = "/"

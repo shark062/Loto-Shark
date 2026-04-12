@@ -1,0 +1,55 @@
+{
+  "name": "Loto Shark - Análise Inteligente de Loterias",
+  "short_name": "Loto Shark",
+  "description": "Plataforma avançada de análise e previsão de loterias brasileiras com IA",
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a1a",
+  "theme_color": "#00ffff",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Gerar Jogo",
+      "short_name": "Gerar",
+      "description": "Gerar novo jogo inteligente",
+      "url": "/generator",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Resultados",
+      "short_name": "Resultados",
+      "description": "Ver histórico de resultados",
+      "url": "/results",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false
+}
