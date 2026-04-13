@@ -102,31 +102,31 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
       className={`border border-white/10 border-l-4 ${cfg.borderColor} rounded-lg bg-card hover:bg-card/80 transition-all duration-200 hover:shadow-lg hover:shadow-black/20 group overflow-hidden`}
     >
       {/* Top: ícone + nome + prize */}
-      <div className="p-4 pb-3">
+      <div className="px-5 pt-4 pb-3">
         <div className="flex items-start gap-3">
           {/* Ícone estilizado */}
-          <div className={`w-11 h-11 ${cfg.iconBg} rounded-xl flex items-center justify-center text-xl shrink-0 border border-white/10 shadow-sm`}>
+          <div className={`w-10 h-10 ${cfg.iconBg} rounded-xl flex items-center justify-center text-lg shrink-0 border border-white/10 shadow-sm`}>
             {cfg.emoji}
           </div>
 
           {/* Nome + meta-info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="font-bold text-sm text-foreground leading-tight" data-testid={`lottery-name-${lottery.id}`}>
+              <h3 className="font-bold text-sm text-foreground leading-tight truncate" data-testid={`lottery-name-${lottery.id}`}>
                 {lottery.displayName}
               </h3>
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal border-white/15 text-muted-foreground">
-                {lottery.minNumbers}–{lottery.maxNumbers} dezenas
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal border-white/15 text-muted-foreground shrink-0">
+                {lottery.minNumbers}–{lottery.maxNumbers} dez.
               </Badge>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1">
-                <Star className="h-3 w-3" />
-                {lottery.totalNumbers} números
+                <Star className="h-2.5 w-2.5" />
+                {lottery.totalNumbers} núm.
               </span>
               {nextDraw?.drawDate && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
+                <span className="flex items-center gap-1 truncate">
+                  <Calendar className="h-2.5 w-2.5 shrink-0" />
                   {formatDrawDate(nextDraw.drawDate, nextDraw.drawTime)}
                 </span>
               )}
@@ -142,36 +142,36 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
         </div>
 
         {/* Prêmio + Countdown */}
-        <div className="mt-3 flex items-center justify-between">
-          <div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 flex items-center gap-1">
               <DollarSign className="h-2.5 w-2.5" />
               Prêmio estimado
             </div>
-            <div className={`text-lg font-black ${hasPrize ? cfg.prizeColor : 'text-muted-foreground'} leading-tight`} data-testid={`lottery-prize-${lottery.id}`}>
+            <div className={`text-base font-black ${hasPrize ? cfg.prizeColor : 'text-muted-foreground'} leading-tight truncate`} data-testid={`lottery-prize-${lottery.id}`}>
               {hasPrize ? prize : 'Consulte a Caixa'}
             </div>
           </div>
 
           {hasCountdown && (
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 flex items-center justify-end gap-1">
                 <Timer className="h-2.5 w-2.5" />
                 Conta regressiva
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 {tr.days > 0 && (
-                  <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-400">
+                  <span className="bg-white/10 border border-white/10 rounded px-1 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
                     {String(tr.days).padStart(2, '0')}d
                   </span>
                 )}
-                <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-400">
+                <span className="bg-white/10 border border-white/10 rounded px-1 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
                   {String(tr.hours).padStart(2, '0')}h
                 </span>
-                <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-400">
+                <span className="bg-white/10 border border-white/10 rounded px-1 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
                   {String(tr.minutes).padStart(2, '0')}m
                 </span>
-                <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-300 animate-pulse">
+                <span className="bg-white/10 border border-white/10 rounded px-1 py-0.5 font-mono text-[11px] font-bold text-yellow-300 animate-pulse">
                   {String(tr.seconds ?? 0).padStart(2, '0')}s
                 </span>
               </div>
@@ -181,7 +181,7 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
       </div>
 
       {/* Ações */}
-      <div className="px-4 pb-3 flex gap-2 border-t border-white/5 pt-3">
+      <div className="px-5 pb-4 flex gap-2 border-t border-white/5 pt-3">
         <Button
           size="sm"
           variant="outline"
