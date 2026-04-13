@@ -59,7 +59,7 @@ export default function Generate() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* Controls Panel */}
         <div className="lg:col-span-1 space-y-6">
           <NeonCard glowColor="primary" className="space-y-6">
@@ -110,7 +110,7 @@ export default function Generate() {
 
             <div className="space-y-3">
               <label className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Strategy Engine</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {strategies.map((s) => (
                   <button
                     key={s.id}
@@ -147,7 +147,7 @@ export default function Generate() {
         {/* Results Panel */}
         <div className="lg:col-span-2">
           {generatedGames.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <AnimatePresence>
                 {generatedGames.map((game, idx) => (
                   <motion.div

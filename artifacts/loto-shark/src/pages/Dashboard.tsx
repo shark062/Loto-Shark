@@ -39,7 +39,7 @@ export default function Dashboard() {
       </section>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <NeonCard glowColor="secondary">
           <div className="flex items-start justify-between">
             <div>
@@ -91,7 +91,7 @@ export default function Dashboard() {
       </div>
 
       {/* Latest Draw */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <NeonCard className="min-h-[300px]" glowColor="none">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-display font-bold text-white">LATEST DRAW</h3>
@@ -107,7 +107,7 @@ export default function Dashboard() {
                   <NumberBall key={num} number={num} size="lg" variant="cold" />
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-1 gap-4 text-center">
                 <div className="p-4 bg-black/20 rounded-xl">
                   <p className="text-xs text-muted-foreground uppercase">Winners</p>
                   <p className="text-xl font-mono text-white">{latestMega.winnersCount}</p>

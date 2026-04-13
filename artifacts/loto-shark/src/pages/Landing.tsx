@@ -96,7 +96,7 @@ export default function Landing() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
+          <div className="grid grid-cols-2 gap-6 max-w-2xl mx-auto">
             <div className="text-center">
               <div className="text-3xl font-bold text-neon-green neon-text">8</div>
               <div className="text-sm text-muted-foreground">Modalidades</div>
@@ -129,7 +129,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {features.map((feature, index) => (
               <Card key={index} className="neon-border bg-black/20 backdrop-blur-sm transition-all duration-300">
                 <CardContent className="p-6 text-center">
@@ -161,7 +161,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             {[
               { name: 'Mega-Sena', icon: '💎', color: 'text-neon-green' },
               { name: 'Lotofácil', icon: '⭐', color: 'text-neon-purple' },

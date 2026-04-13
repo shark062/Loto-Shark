@@ -139,7 +139,7 @@ export default function HeatMap() {
         </div>
 
         {/* Temperature Statistics */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 mb-8">
           <Card className="neon-border">
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1.5">
@@ -193,7 +193,7 @@ export default function HeatMap() {
         )}
 
         {/* Analysis Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           {/* Most Frequent Numbers */}
           <Card className="neon-border">
             <CardHeader>

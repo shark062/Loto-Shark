@@ -234,7 +234,7 @@ export default function AIProviders() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {[
             { label: "Providers", value: stats.total, icon: Shield, color: "text-blue-400" },
             { label: "Ativos", value: stats.active, icon: Zap, color: "text-green-400" },

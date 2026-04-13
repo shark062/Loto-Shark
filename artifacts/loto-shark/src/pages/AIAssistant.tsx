@@ -282,7 +282,7 @@ export default function AIAssistant() {
         return (
           <div className="bg-black/20 rounded-lg p-4 my-3">
             <h4 className="font-semibold text-white mb-3">📊 Análise - {viz.content.lottery}</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <h5 className="text-sm font-medium text-gray-400 mb-2">Mais Frequentes</h5>
                 <div className="flex flex-wrap gap-1">

@@ -435,7 +435,7 @@ export default function Results() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-5">
+        <div className="grid grid-cols-2 gap-2 mb-5">
           {[
             { label: "Total de Jogos", val: userStats?.totalGames ?? 0, icon: Trophy, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
             { label: "Premiados", val: userStats?.wins ?? 0, icon: Medal, color: "text-neon-green", bg: "bg-green-500/10", border: "border-green-500/20" },
@@ -459,7 +459,7 @@ export default function Results() {
         <LiveSorteioCard userGames={gamesList} />
 
         <Card className="bg-black/20 mb-4 p-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <Select value={filterLottery} onValueChange={setFilterLottery}>
               <SelectTrigger><SelectValue placeholder="Modalidade" /></SelectTrigger>
               <SelectContent>

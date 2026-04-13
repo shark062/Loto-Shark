@@ -435,7 +435,7 @@ export default function Generator() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {/* Generator Form */}
           <Card className="neon-border bg-black/20">
             <CardHeader>
@@ -478,7 +478,7 @@ export default function Generator() {
 
                 {/* Numbers Count — hidden for manual/desdobramento modes */}
                 {form.watch('strategy') !== 'manual' && form.watch('strategy') !== 'desdobramento' && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label className="flex items-center text-sm font-medium text-foreground mb-2">
                         <Dice6 className="h-4 w-4 mr-2 text-accent" />
@@ -813,7 +813,7 @@ export default function Generator() {
                               <Sun className="h-4 w-4 mr-2 text-amber-500" />
                               <span className="font-medium">Estratégia equilibrada</span>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 mb-3">
+                            <div className="grid grid-cols-1 gap-3 mb-3">
                               <div className="text-center p-2 bg-black/20 rounded">
                                 <div className="font-bold text-destructive">40%</div>
                                 <div className="text-xs">🔥 Quentes</div>
@@ -1071,7 +1071,7 @@ export default function Generator() {
 
                     {/* Stats */}
                     {sharkStats && sharkStats.totalComAcertos > 0 && (
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 gap-3">
                         {[
                           { icon: BookOpen, label: "Com resultado", value: sharkStats.totalComAcertos },
                           { icon: Award, label: "Média acertos", value: sharkStats.mediaGeral.toFixed(1) },

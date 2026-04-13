@@ -232,7 +232,7 @@ export default function AIAnalysis() {
         {/* AI Status Overview */}
         <Card className="neon-border bg-black/20">
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="flex flex-col items-center text-center">
                 <Brain className="h-7 w-7 mb-2 text-secondary" />
                 <div className="text-xl font-bold text-secondary neon-text" data-testid="ai-level">
@@ -478,7 +478,7 @@ export default function AIAnalysis() {
                     {predictionAnalysis.result.alternatives && predictionAnalysis.result.alternatives.length > 0 && (
                       <div>
                         <h5 className="text-lg font-semibold text-foreground mb-4">Alternativas</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                           {predictionAnalysis.result.alternatives.slice(0, 4).map((alt: any, index: number) => (
                             <Card key={index} className="bg-black/20 border-border/50">
                               <CardContent className="p-4">
@@ -569,7 +569,7 @@ export default function AIAnalysis() {
                         </p>
 
                         {/* Number Selection Distribution */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="grid grid-cols-1 gap-4 mb-6">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-destructive">
                               {strategyAnalysis.result.numberSelection?.hotPercentage || 40}%
@@ -593,7 +593,7 @@ export default function AIAnalysis() {
                     </Card>
 
                     {/* Additional Recommendations */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       <Card className="bg-black/20 border-border/50">
                         <CardContent className="p-4">
                           <div className="flex items-center mb-3">

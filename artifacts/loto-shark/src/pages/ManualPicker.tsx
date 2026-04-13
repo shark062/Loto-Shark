@@ -220,7 +220,7 @@ export default function ManualPicker() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Number Grid */}
           <div className="lg:col-span-2">
             <Card className="neon-border bg-black/20">

@@ -137,7 +137,7 @@ export default function AIMetrics() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <Card className="bg-slate-800/50 border-purple-500/20">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center justify-center gap-2">
@@ -314,7 +314,7 @@ export default function AIMetrics() {
 
           {/* Comparison Tab */}
           <TabsContent value="comparison" className="space-y-6 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {(metaAnalysis?.rankings || [
                 {
                   modelName: 'DeepSeek',
@@ -455,7 +455,7 @@ export default function AIMetrics() {
                   <h3 className="text-xl font-bold text-white mb-4">
                     {metaAnalysis?.optimalStrategy || "Ensemble Weighted - Máxima Precisão"}
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <p className="text-purple-200 text-sm mb-2">Pesos dos Modelos:</p>
                       {(optimalCombination?.weights ? Object.entries(optimalCombination.weights) : [

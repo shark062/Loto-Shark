@@ -315,7 +315,7 @@ export default function Information() {
         </div>
 
         {/* Estatísticas Rápidas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-8">
           <Card className="neon-border bg-black/20">
             <CardContent className="p-3 flex flex-col items-center text-center">
               <Target className="h-5 w-5 mb-1.5 text-primary" />
@@ -358,7 +358,7 @@ export default function Information() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div className="flex flex-col items-center text-center">
                 <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center mb-3">
                   <Target className="h-5 w-5 text-primary" />
@@ -422,7 +422,7 @@ export default function Information() {
                     <p className="text-muted-foreground">{lottery.description}</p>
 
                     {/* Informações Básicas */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 bg-black/20 rounded-lg">
                         <div className="text-sm text-muted-foreground mb-1">Números</div>
                         <div className="font-bold text-foreground">
@@ -500,7 +500,7 @@ export default function Information() {
         </Card>
 
         {/* Dicas e Estratégias */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           {/* Dicas */}
           <Card className="neon-border bg-black/20">
             <CardHeader>

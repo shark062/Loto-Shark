@@ -118,7 +118,7 @@ export default function AdvancedDashboard() {
         </div>
 
         {/* Métricas de qualidade principais */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-8">
           <MetricCard
             title="Consistência dos Dados"
             value={mockQualityMetrics.dataConsistency}
@@ -197,7 +197,7 @@ export default function AdvancedDashboard() {
 
         {/* 📊 Aba: Visão Geral */}
         <TabsContent value="overview" className="space-y-6 mt-8" data-testid="content-overview">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Status do Sistema */}
             <Card className="bg-slate-800/50 border-purple-500/20" data-testid="system-status-card">
               <CardHeader>
@@ -263,7 +263,7 @@ export default function AdvancedDashboard() {
 
         {/* 🛡️ Aba: Qualidade */}
         <TabsContent value="quality" className="space-y-6 mt-8" data-testid="content-quality">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card className="bg-slate-800/50 border-purple-500/20">
               <CardHeader>
                 <CardTitle className="text-white">Métricas de Qualidade</CardTitle>
@@ -309,7 +309,7 @@ export default function AdvancedDashboard() {
 
         {/* ⚡ Aba: Performance */}
         <TabsContent value="performance" className="space-y-6 mt-8" data-testid="content-performance">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <PerformanceCard
               title="Cache Hit Rate"
               value="89.3%"
