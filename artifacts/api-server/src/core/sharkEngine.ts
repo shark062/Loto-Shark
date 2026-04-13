@@ -290,7 +290,9 @@ export function gerarJogosMaster(
 
   const ctx = buildContextCompleto(draws, totalNumbers, minNumbers);
 
-  const candidatos = gerarMultiplasEstrategias(ctx, 300, pesosAtivos);
+  // Rodadas escalam com a quantidade pedida para garantir candidatos suficientes
+  const rodadas = Math.max(300, qtd * 30);
+  const candidatos = gerarMultiplasEstrategias(ctx, rodadas, pesosAtivos);
 
   const vistos = new Set<string>();
   const validados: Array<{ jogo: number[]; origem: string }> = [];

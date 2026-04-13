@@ -54,7 +54,7 @@ import BettingPlatformIntegration from "@/components/BettingPlatformIntegration"
 const generateGameSchema = z.object({
   lotteryId: z.string().min(1, "Selecione uma modalidade"),
   numbersCount: z.number().min(1).optional(),
-  gamesCount: z.number().min(1).optional(),
+  gamesCount: z.number().min(1).max(100).optional(),
   strategy: z.enum(['hot', 'cold', 'mixed', 'ai', 'shark', 'manual', 'desdobramento']),
 }).superRefine((data, ctx) => {
   if (!['manual', 'desdobramento'].includes(data.strategy)) {
@@ -506,7 +506,9 @@ export default function Generator() {
                       </Label>
                       <Input
                         type="number"
-                        placeholder=""
+                        placeholder="Máx. 100"
+                        min={1}
+                        max={100}
                         {...form.register('gamesCount', { valueAsNumber: true })}
                         className="bg-input border-border"
                         data-testid="games-count-input"

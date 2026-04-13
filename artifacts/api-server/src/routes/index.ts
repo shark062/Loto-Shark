@@ -177,8 +177,8 @@ router.post("/games/generate", async (req: Request, res: Response) => {
   const { lotteryId = 'megasena', numbersCount, gamesCount = 1, strategy = 'mixed' } = req.body;
 
   const lottery = LOTTERIES.find(l => l.id === lotteryId) || LOTTERIES[0];
-  const qty   = Math.max(numbersCount || lottery.minNumbers, lottery.minNumbers);
-  const count = Math.min(Math.max(gamesCount, 1), 20);
+  const qty   = Math.min(Math.max(numbersCount || lottery.minNumbers, lottery.minNumbers), lottery.totalNumbers);
+  const count = Math.min(Math.max(gamesCount, 1), 100);
 
   const STRATEGY_REASONING: Record<string, string> = {
     hot:    'Números com maior frequência nos últimos 20 sorteios reais',
