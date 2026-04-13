@@ -59,10 +59,18 @@ const DEFAULT_MODELS: Record<string, string> = {
   together:   "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
 };
 
+// ─── Mascaramento de chave (nunca expõe a chave completa ao cliente) ──────────
+
+function maskApiKey(key: string): string {
+  if (!key) return "****";
+  if (key.length <= 8) return "****";
+  return `${key.slice(0, 4)}${"*".repeat(Math.min(8, key.length - 6))}${key.slice(-2)}`;
+}
+
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 export function listProviders(): {
-  providers: ProviderConfig[];
+  providers: (Omit<ProviderConfig, "apiKey"> & { apiKey: string })[];
   stats: { total: number; active: number; avgSuccessRate: number };
 } {
   const list = [...providers.values()];
@@ -70,7 +78,8 @@ export function listProviders(): {
   const avgSuccessRate = list.length > 0
     ? list.reduce((s, p) => s + p.successRate, 0) / list.length
     : 0;
-  return { providers: list, stats: { total: list.length, active, avgSuccessRate } };
+  const masked = list.map(p => ({ ...p, apiKey: maskApiKey(p.apiKey) }));
+  return { providers: masked, stats: { total: list.length, active, avgSuccessRate } };
 }
 
 export function addProvider(input: {

@@ -47,6 +47,8 @@ import {
   resetarMemoria,
   type SharkPesos,
 } from "@/core/sharkMemory";
+import { gerarRelatorio, getEmojiEstrategia, type Relatorio } from "@/core/sharkAnalytics";
+import { desdobramentoInteligente } from "@/core/sharkDesdobramento";
 import BettingPlatformIntegration from "@/components/BettingPlatformIntegration";
 
 const generateGameSchema = z.object({
@@ -118,6 +120,9 @@ export default function Generator() {
   const [showRegistrar, setShowRegistrar] = useState(false);
   const [desdobramentoLimit, setDesdobramentoLimit] = useState<number | "">("");
   const [sharkDesdobramentoLimit, setSharkDesdobramentoLimit] = useState<number | "">("");
+  const [relatorio, setRelatorio] = useState<Relatorio>({});
+  const [jogosInteligente, setJogosInteligente] = useState<GeneratedGame[]>([]);
+  const [showInteligente, setShowInteligente] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -125,6 +130,7 @@ export default function Generator() {
     const pesos = ajustarPesos();
     setSharkPesos(pesos);
     setSharkStats(estatisticasGerais());
+    setRelatorio(gerarRelatorio());
   }, []);
 
   const clearGeneratedGames = () => {
@@ -1025,6 +1031,81 @@ export default function Generator() {
               </Card>
             )}
 
+            {/* Desdobramento Inteligente (frontend) */}
+            {sharkRawGames.length > 0 && selectedLottery && (
+              <Card className="neon-border bg-black/20 border-cyan-500/40">
+                <CardContent className="p-4 space-y-3">
+                  <p className="text-sm font-semibold text-cyan-400 flex items-center gap-2">
+                    <Brain className="h-4 w-4" />
+                    Desdobramento Inteligente
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Analisa os {sharkRawGames.length} jogos e cria variações baseadas nos números mais frequentes entre eles.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      const min = selectedLottery!.minNumbers;
+                      const resultado = desdobramentoInteligente(sharkRawGames, min, 50, 20);
+                      if (resultado.total === 0) {
+                        toast({ title: "Sem dados suficientes", description: "Gere mais jogos Shark primeiro.", variant: "destructive" });
+                        return;
+                      }
+                      const games: GeneratedGame[] = resultado.combinacoes.map(c => ({
+                        numbers: c,
+                        strategy: "desdobramento-inteligente",
+                      }));
+                      setJogosInteligente(games);
+                      setShowInteligente(true);
+                      toast({
+                        title: "🧠 Desdobramento Inteligente!",
+                        description: `${resultado.total} combinações de ${resultado.poolUsado.length} dezenas-chave.`,
+                      });
+                    }}
+                    className="w-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300"
+                  >
+                    <Brain className="h-4 w-4 mr-2" />
+                    Gerar Desdobramento Inteligente 🧠
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Jogos do Desdobramento Inteligente */}
+            {showInteligente && jogosInteligente.length > 0 && (
+              <Card className="neon-border bg-black/20 border-cyan-500/30">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-cyan-400 flex items-center text-base">
+                    <Brain className="h-5 w-5 mr-2" />
+                    Desdobramento Inteligente ({jogosInteligente.length} combinações)
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowInteligente(false)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-2 p-4 max-h-96 overflow-y-auto">
+                  {jogosInteligente.map((game, index) => (
+                    <Card key={index} className="bg-black/20 border-cyan-500/20">
+                      <CardContent className="p-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-cyan-400">#{index + 1}</span>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(game.numbers)}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {game.numbers.map(n => (
+                            <Badge key={n} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-cyan-600 text-white p-0">
+                              {n.toString().padStart(2, '0')}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Shark Learning Memory Panel */}
             {sharkRawGames.length > 0 && (
               <Card className="neon-border bg-black/20 border-cyan-500/30">
@@ -1086,6 +1167,33 @@ export default function Generator() {
                       </div>
                     )}
 
+                    {/* Painel de Desempenho por Estratégia */}
+                    {Object.keys(relatorio).length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wider">
+                          Desempenho por Estratégia
+                        </p>
+                        <div className="space-y-1">
+                          {Object.entries(relatorio)
+                            .sort((a, b) => b[1].media - a[1].media)
+                            .map(([estrategia, dados]) => (
+                              <div
+                                key={estrategia}
+                                className="flex items-center justify-between text-xs bg-white/5 rounded px-2 py-1.5"
+                              >
+                                <span className="text-white/80 capitalize">
+                                  {getEmojiEstrategia(estrategia)}{" "}
+                                  {estrategia.replace(/_/g, " ")}
+                                </span>
+                                <span className="text-cyan-300 font-mono tabular-nums">
+                                  média {dados.media.toFixed(1)} | 🏆 {dados.melhor} | {dados.jogos}j
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Registrar Resultado */}
                     <div className="border border-white/10 rounded-lg p-3 space-y-2">
                       <p className="text-xs font-semibold text-white flex items-center gap-2">
@@ -1117,6 +1225,7 @@ export default function Generator() {
                             const novosP = ajustarPesos();
                             setSharkPesos(novosP);
                             setSharkStats(estatisticasGerais());
+                            setRelatorio(gerarRelatorio());
                             setResultInput("");
                             toast({ title: "Resultado registrado!", description: `${res.registrados} jogo(s) avaliado(s). Melhor: ${res.melhorAcerto} acerto(s). Pesos ajustados!` });
                           }}
