@@ -8,13 +8,8 @@ import {
   Calendar,
   Clock,
   Zap,
-  Flame,
-  Bookmark,
-  TrendingUp,
-  DollarSign,
-  Timer,
-  ChevronRight,
-  Star
+  Target,
+  ShoppingCart,
 } from "lucide-react";
 import type { LotteryType } from "@/types/lottery";
 
@@ -26,42 +21,25 @@ function formatPrize(value: string | number | undefined): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(num);
 }
 
-function formatDrawDate(isoDate: string, drawTime?: string): string {
-  const d = new Date(isoDate);
-  const now = new Date();
-  // Usa o drawTime fixo da loteria (já em horário de Brasília) em vez de
-  // converter o ISO UTC para local, evitando o deslocamento UTC-3
-  const timeStr = drawTime ?? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const isToday = d.toDateString() === now.toDateString();
-  if (isToday) return `Hoje às ${timeStr}`;
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  if (d.toDateString() === tomorrow.toDateString()) return `Amanhã às ${timeStr}`;
-  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) +
-    ' às ' + timeStr;
-}
-
 const LOTTERY_CONFIG: Record<string, {
   emoji: string;
   prizeColor: string;
   borderColor: string;
-  bgAccent: string;
-  iconBg: string;
+  accentGlow: string;
 }> = {
-  megasena:   { emoji: '💎', prizeColor: 'text-emerald-400', borderColor: 'border-l-emerald-500',  bgAccent: 'from-emerald-500/10', iconBg: 'bg-emerald-500/20' },
-  lotofacil:  { emoji: '⭐', prizeColor: 'text-purple-400',  borderColor: 'border-l-purple-500',   bgAccent: 'from-purple-500/10',  iconBg: 'bg-purple-500/20'  },
-  quina:      { emoji: '🪙', prizeColor: 'text-yellow-400',  borderColor: 'border-l-yellow-500',   bgAccent: 'from-yellow-500/10',  iconBg: 'bg-yellow-500/20'  },
-  lotomania:  { emoji: '♾️', prizeColor: 'text-pink-400',   borderColor: 'border-l-pink-500',     bgAccent: 'from-pink-500/10',    iconBg: 'bg-pink-500/20'    },
-  duplasena:  { emoji: '👑', prizeColor: 'text-orange-400',  borderColor: 'border-l-orange-500',   bgAccent: 'from-orange-500/10',  iconBg: 'bg-orange-500/20'  },
-  timemania:  { emoji: '⚽', prizeColor: 'text-rose-400',    borderColor: 'border-l-rose-500',     bgAccent: 'from-rose-500/10',    iconBg: 'bg-rose-500/20'    },
-  diadesorte: { emoji: '🍀', prizeColor: 'text-green-400',   borderColor: 'border-l-green-500',    bgAccent: 'from-green-500/10',   iconBg: 'bg-green-500/20'   },
-  supersete:  { emoji: '7️⃣', prizeColor: 'text-red-400',   borderColor: 'border-l-red-500',      bgAccent: 'from-red-500/10',     iconBg: 'bg-red-500/20'     },
+  megasena:   { emoji: '💎', prizeColor: 'text-emerald-400', borderColor: 'border-emerald-500/30',  accentGlow: 'hover:shadow-emerald-500/10' },
+  lotofacil:  { emoji: '⭐', prizeColor: 'text-purple-400',  borderColor: 'border-purple-500/30',   accentGlow: 'hover:shadow-purple-500/10'  },
+  quina:      { emoji: '🪙', prizeColor: 'text-yellow-400',  borderColor: 'border-yellow-500/30',   accentGlow: 'hover:shadow-yellow-500/10'  },
+  lotomania:  { emoji: '♾️', prizeColor: 'text-pink-400',   borderColor: 'border-pink-500/30',     accentGlow: 'hover:shadow-pink-500/10'    },
+  duplasena:  { emoji: '👑', prizeColor: 'text-orange-400',  borderColor: 'border-orange-500/30',   accentGlow: 'hover:shadow-orange-500/10'  },
+  timemania:  { emoji: '⚽', prizeColor: 'text-rose-400',    borderColor: 'border-rose-500/30',     accentGlow: 'hover:shadow-rose-500/10'    },
+  diadesorte: { emoji: '🍀', prizeColor: 'text-green-400',   borderColor: 'border-green-500/30',    accentGlow: 'hover:shadow-green-500/10'   },
+  supersete:  { emoji: '7️⃣', prizeColor: 'text-red-400',   borderColor: 'border-red-500/30',      accentGlow: 'hover:shadow-red-500/10'     },
 };
 
 function getConfig(id: string) {
   return LOTTERY_CONFIG[id] ?? {
-    emoji: '🎰', prizeColor: 'text-primary', borderColor: 'border-l-primary',
-    bgAccent: 'from-primary/10', iconBg: 'bg-primary/20'
+    emoji: '🎰', prizeColor: 'text-primary', borderColor: 'border-primary/30', accentGlow: 'hover:shadow-primary/10'
   };
 }
 
@@ -74,19 +52,19 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
 
   if (isLoading) {
     return (
-      <div className={`border border-white/10 border-l-4 ${cfg.borderColor} rounded-lg animate-pulse bg-card`}>
-        <div className="p-4 flex items-center gap-4">
-          <div className="w-11 h-11 bg-muted/20 rounded-xl shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 bg-muted/20 rounded w-1/3" />
-            <div className="h-3 bg-muted/20 rounded w-1/2" />
+      <div className="rounded-2xl border border-white/10 bg-black/30 animate-pulse p-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 bg-muted/20 rounded-full" />
+          <div className="h-5 bg-muted/20 rounded w-32" />
+          <div className="h-3 bg-muted/20 rounded w-44" />
+          <div className="h-3 bg-muted/20 rounded w-36" />
+          <div className="h-8 bg-muted/20 rounded w-48 mt-1" />
+          <div className="h-4 bg-muted/20 rounded w-40" />
+          <div className="flex gap-2 mt-2 w-full">
+            <div className="h-10 bg-muted/20 rounded-lg flex-1" />
+            <div className="h-10 bg-muted/20 rounded-lg flex-1" />
+            <div className="h-10 bg-muted/20 rounded-lg flex-1" />
           </div>
-          <div className="h-5 bg-muted/20 rounded w-20 shrink-0" />
-        </div>
-        <div className="px-4 pb-3 flex gap-2">
-          <div className="h-8 bg-muted/20 rounded flex-1" />
-          <div className="h-8 bg-muted/20 rounded flex-1" />
-          <div className="h-8 bg-muted/20 rounded flex-1" />
         </div>
       </div>
     );
@@ -99,108 +77,90 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
 
   return (
     <div
-      className={`border border-white/10 border-l-4 ${cfg.borderColor} rounded-lg bg-card hover:bg-card/80 transition-all duration-200 hover:shadow-lg hover:shadow-black/20 group`}
+      className={`rounded-2xl border ${cfg.borderColor} bg-black/30 hover:bg-black/40 transition-all duration-200 hover:shadow-xl ${cfg.accentGlow}`}
+      data-testid={`lottery-card-${lottery.id}`}
     >
-      {/* Cabeçalho: ícone + nome + badge concurso */}
-      <div className="px-4 pt-3 pb-2">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-9 h-9 ${cfg.iconBg} rounded-lg flex items-center justify-center text-base shrink-0 border border-white/10`}>
-            {cfg.emoji}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="font-bold text-sm text-foreground leading-tight truncate" data-testid={`lottery-name-${lottery.id}`}>
-                {lottery.displayName}
-              </h3>
-              {nextDraw?.contestNumber && (
-                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                  #{nextDraw.contestNumber}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal border-white/15 text-muted-foreground">
-                {lottery.minNumbers}–{lottery.maxNumbers} dez.
-              </Badge>
-              {nextDraw?.drawDate && (
-                <span className="flex items-center gap-1 truncate">
-                  <Calendar className="h-2.5 w-2.5 shrink-0" />
-                  {formatDrawDate(nextDraw.drawDate, nextDraw.drawTime)}
-                </span>
-              )}
-            </div>
-          </div>
+      {/* Corpo centralizado */}
+      <div className="px-5 pt-6 pb-4 flex flex-col items-center text-center gap-1.5">
+        {/* Emoji grande */}
+        <div className="text-5xl mb-1 leading-none" role="img" aria-label={lottery.displayName}>
+          {cfg.emoji}
         </div>
 
-        {/* Prêmio */}
-        <div className="mt-2.5">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1 mb-0.5">
-            <DollarSign className="h-2.5 w-2.5" />
-            Prêmio estimado
+        {/* Nome */}
+        <h3
+          className="text-xl font-bold text-white tracking-tight"
+          data-testid={`lottery-name-${lottery.id}`}
+        >
+          {lottery.displayName}
+        </h3>
+
+        {/* Dezenas disponíveis */}
+        <p className="text-sm text-muted-foreground">
+          {lottery.minNumbers}–{lottery.maxNumbers} números&nbsp;•&nbsp;{lottery.totalNumbers} disponíveis
+        </p>
+
+        {/* Número do concurso */}
+        {nextDraw?.contestNumber && (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <span>Concurso #{nextDraw.contestNumber}</span>
           </div>
-          <div className={`text-base font-black ${hasPrize ? cfg.prizeColor : 'text-muted-foreground'} leading-tight`} data-testid={`lottery-prize-${lottery.id}`}>
-            {hasPrize ? prize : 'Consulte a Caixa'}
-          </div>
+        )}
+
+        {/* Prêmio estimado */}
+        <div
+          className={`text-2xl font-black mt-2 tracking-tight ${hasPrize ? cfg.prizeColor : 'text-muted-foreground'}`}
+          data-testid={`lottery-prize-${lottery.id}`}
+        >
+          {hasPrize ? prize : 'Consulte a Caixa'}
         </div>
 
-        {/* Conta regressiva em linha separada */}
+        {/* Conta regressiva */}
         {hasCountdown && (
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Timer className="h-2.5 w-2.5" />
-              <span>Faltam</span>
-            </div>
-            <div className="flex items-center gap-0.5">
-              {tr.days > 0 && (
-                <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
-                  {String(tr.days).padStart(2, '0')}d
-                </span>
-              )}
-              <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
-                {String(tr.hours).padStart(2, '0')}h
-              </span>
-              <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
-                {String(tr.minutes).padStart(2, '0')}m
-              </span>
-              <span className="bg-white/10 border border-white/10 rounded px-1.5 py-0.5 font-mono text-[11px] font-bold text-yellow-300 animate-pulse">
-                {String(tr.seconds ?? 0).padStart(2, '0')}s
-              </span>
-            </div>
+          <div className="flex items-center gap-2 mt-1 text-sm">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="font-mono font-semibold text-yellow-400 tracking-widest">
+              {String(tr.days).padStart(2, '0')}d&nbsp;
+              {String(tr.hours).padStart(2, '0')}h&nbsp;
+              {String(tr.minutes).padStart(2, '0')}m&nbsp;
+              {String(tr.seconds ?? 0).padStart(2, '0')}s
+            </span>
           </div>
         )}
       </div>
 
-      {/* Ações */}
-      <div className="px-4 pb-3 flex gap-2 border-t border-white/5 pt-2.5">
+      {/* Botões */}
+      <div className="border-t border-white/5 px-4 py-3 flex gap-2">
         <Button
           size="sm"
-          variant="outline"
-          className="flex-1 h-8 gap-1.5 text-xs font-medium border-white/10 hover:border-yellow-500/50 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+          variant="ghost"
+          className="flex-1 h-10 flex-col gap-0.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-yellow-500/15 hover:border-yellow-500/30 hover:text-yellow-400 text-foreground/80 transition-all"
           onClick={() => setLocation(`/generator?lottery=${lottery.id}`)}
           data-testid={`quick-generate-${lottery.id}`}
         >
-          <Zap className="h-3.5 w-3.5" />
+          <Zap className="h-4 w-4" />
           Gerar
         </Button>
         <Button
           size="sm"
-          variant="outline"
-          className="flex-1 h-8 gap-1.5 text-xs font-medium border-white/10 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          variant="ghost"
+          className="flex-1 h-10 flex-col gap-0.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-red-500/15 hover:border-red-500/30 hover:text-red-400 text-foreground/80 transition-all"
           onClick={() => setLocation(`/heat-map?lottery=${lottery.id}`)}
           data-testid={`quick-heatmap-${lottery.id}`}
         >
-          <Flame className="h-3.5 w-3.5" />
-          Calor
+          <Target className="h-4 w-4" />
+          Mapa
         </Button>
         <Button
           size="sm"
-          variant="outline"
-          className="flex-1 h-8 gap-1.5 text-xs font-medium border-white/10 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-          onClick={() => setLocation(`/results`)}
-          data-testid={`quick-results-${lottery.id}`}
+          variant="ghost"
+          className="flex-1 h-10 flex-col gap-0.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-blue-500/15 hover:border-blue-500/30 hover:text-blue-400 text-foreground/80 transition-all"
+          onClick={() => setLocation(`/manual-picker?lottery=${lottery.id}`)}
+          data-testid={`quick-cart-${lottery.id}`}
         >
-          <TrendingUp className="h-3.5 w-3.5" />
-          Resultados
+          <ShoppingCart className="h-4 w-4" />
+          Carrinho
         </Button>
       </div>
     </div>
@@ -221,16 +181,14 @@ export default function AllLotteriesCard() {
             Carregando Modalidades...
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-2">
+        <CardContent className="p-4 pt-0 space-y-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="border border-white/10 border-l-4 border-l-white/20 rounded-lg animate-pulse bg-card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-muted/20 rounded-xl shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted/20 rounded w-1/3" />
-                  <div className="h-3 bg-muted/20 rounded w-1/2" />
-                </div>
-                <div className="h-5 bg-muted/20 rounded w-16 shrink-0" />
+            <div key={i} className="rounded-2xl border border-white/10 bg-black/30 animate-pulse p-6">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-14 h-14 bg-muted/20 rounded-full" />
+                <div className="h-5 bg-muted/20 rounded w-32" />
+                <div className="h-3 bg-muted/20 rounded w-44" />
+                <div className="h-7 bg-muted/20 rounded w-40 mt-1" />
               </div>
             </div>
           ))}
