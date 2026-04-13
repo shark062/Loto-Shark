@@ -21,7 +21,8 @@ import {
   Lightbulb,
   BarChart3
 } from "lucide-react";
-import { useLotteryTypes } from "@/hooks/useLotteryData";
+import { useLotteryTypes, useLotteryPrizes } from "@/hooks/useLotteryData";
+import { RefreshCw, Trophy, TrendingUp } from "lucide-react";
 
 interface LotteryInfo {
   id: string;
@@ -265,6 +266,188 @@ const getDrawDaysInPortuguese = (drawDays: string[]) => {
 
   return drawDays.map(day => dayTranslation[day] || day).join(', ');
 };
+
+// Componente que busca e exibe dados reais de premiação para cada loteria
+function LotteryGuideItem({ lottery, prizeColor }: {
+  lottery: { id: string; displayName: string; icon: string; minNumbers: number; maxNumbers: number; totalNumbers: number; drawDays: string; drawTime: string; description: string; minBet: string; categories: any[] };
+  prizeColor: string;
+}) {
+  const { data: prizes, isLoading, error, refetch } = useLotteryPrizes(lottery.id);
+
+  const formatDate = (isoDate: string | null) => {
+    if (!isoDate) return '—';
+    const d = new Date(isoDate.includes('T') ? isoDate : isoDate + 'T12:00:00');
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  return (
+    <AccordionItem value={lottery.id} className="border border-white/10 rounded-xl overflow-hidden bg-black/20">
+      <AccordionTrigger className="hover:no-underline px-4 py-3" data-testid={`lottery-accordion-${lottery.id}`}>
+        <div className="flex items-center gap-3 w-full">
+          <span className="text-xl">{lottery.icon}</span>
+          <div className="text-left flex-1 min-w-0">
+            <h3 className={`text-sm font-bold ${prizeColor}`}>{lottery.displayName}</h3>
+            <p className="text-xs text-muted-foreground truncate">
+              {lottery.minNumbers}–{lottery.maxNumbers} números • {lottery.drawDays}
+            </p>
+          </div>
+          {prizes?.accumulated && (
+            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-[10px] shrink-0">Acumulado</Badge>
+          )}
+        </div>
+      </AccordionTrigger>
+
+      <AccordionContent className="px-4 pb-4 space-y-4">
+        {/* Descrição */}
+        <p className="text-sm text-muted-foreground">{lottery.description}</p>
+
+        {/* Dados básicos */}
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Números', value: `${lottery.minNumbers}–${lottery.maxNumbers}` },
+            { label: 'Faixa Total', value: `1 a ${lottery.totalNumbers}` },
+            { label: 'Aposta Mín.', value: lottery.minBet, highlight: true },
+            { label: 'Horário', value: lottery.drawTime },
+          ].map(item => (
+            <div key={item.label} className="text-center p-2.5 bg-black/30 rounded-lg border border-white/5">
+              <div className="text-[10px] text-muted-foreground mb-1">{item.label}</div>
+              <div className={`text-sm font-bold ${item.highlight ? 'text-emerald-400' : 'text-foreground'}`}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Cabeçalho de Prêmios */}
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <Trophy className="h-4 w-4 text-yellow-400" />
+            Estrutura de Prêmios
+          </h4>
+          <div className="flex items-center gap-2">
+            {prizes && (
+              <span className="text-[10px] text-muted-foreground">Concurso #{prizes.contestNumber}</span>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); refetch(); }}
+              className="p-1 hover:text-primary text-muted-foreground transition-colors"
+              title="Atualizar dados"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Prêmio Estimado Próximo Concurso */}
+        {prizes && prizes.estimatedPrize > 0 && (
+          <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-yellow-500/10 to-transparent rounded-lg border border-yellow-500/20">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-yellow-400" />
+              <div>
+                <div className="text-[10px] text-muted-foreground">Estimado próximo sorteio</div>
+                <div className="text-[10px] text-muted-foreground">Concurso #{prizes.nextContest}</div>
+              </div>
+            </div>
+            <div className={`text-base font-black ${prizeColor}`}>
+              {prizes.estimatedPrizeFormatted}
+            </div>
+          </div>
+        )}
+
+        {/* Lista de faixas de prêmio */}
+        <div className="space-y-2">
+          {isLoading ? (
+            // Skeleton de carregamento
+            [...Array(lottery.categories.length || 3)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-black/20 rounded-lg animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-white/10 rounded-full" />
+                  <div className="space-y-1">
+                    <div className="h-3 bg-white/10 rounded w-28" />
+                    <div className="h-2 bg-white/10 rounded w-36" />
+                  </div>
+                </div>
+                <div className="space-y-1 text-right">
+                  <div className="h-4 bg-white/10 rounded w-24" />
+                  <div className="h-2 bg-white/10 rounded w-16" />
+                </div>
+              </div>
+            ))
+          ) : error || !prizes || prizes.prizes.length === 0 ? (
+            // Fallback para dados estáticos quando API falha
+            lottery.categories.map((cat: any, i: number) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary" className="w-6 h-6 flex items-center justify-center text-xs p-0 rounded-full">
+                    {i + 1}
+                  </Badge>
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{cat.name}</div>
+                    <div className="text-[10px] text-muted-foreground">Prob: {cat.probability}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-emerald-400">{cat.prize}</div>
+                  <div className="text-[10px] text-muted-foreground">{cat.prizeType}</div>
+                </div>
+              </div>
+            ))
+          ) : (
+            // Dados REAIS da Caixa
+            prizes.prizes.map((tier, i) => {
+              const staticCat = lottery.categories[i];
+              return (
+                <div key={i} className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant="secondary"
+                      className="w-6 h-6 flex items-center justify-center text-xs p-0 rounded-full shrink-0 bg-white/10"
+                    >
+                      {tier.tier}
+                    </Badge>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">{tier.name}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {staticCat?.probability ? `Prob: ${staticCat.probability}` : ''}
+                        {tier.winners > 0 ? ` · ${tier.winners.toLocaleString('pt-BR')} ganhador${tier.winners !== 1 ? 'es' : ''}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <div className={`text-sm font-bold ${tier.isAccumulated ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                      {tier.prizeFormatted}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {tier.isAccumulated ? '🔄 Acumulado' : tier.winners > 0 ? 'Rateado' : 'Fixo'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Última atualização */}
+        {prizes?.drawDate && (
+          <p className="text-[10px] text-muted-foreground text-center">
+            Último sorteio: {formatDate(prizes.drawDate)} • Dados da Caixa Econômica Federal
+          </p>
+        )}
+
+        {/* Botão jogar */}
+        <Button
+          onClick={() => window.location.href = `/generator?lottery=${lottery.id}`}
+          className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-foreground"
+          variant="ghost"
+          data-testid={`play-${lottery.id}-button`}
+        >
+          <Zap className="h-4 w-4 mr-2 text-yellow-400" />
+          Jogar {lottery.displayName}
+        </Button>
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
 
 export default function Information() {
   const getColorClass = (color: string) => {

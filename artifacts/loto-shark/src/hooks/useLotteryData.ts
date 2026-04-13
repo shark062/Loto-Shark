@@ -45,4 +45,33 @@ export function useUserStats() {
   });
 }
 
+export interface LotteryPrizeTier {
+  tier: number;
+  name: string;
+  winners: number;
+  prizeAmount: number;
+  prizeFormatted: string;
+  isAccumulated: boolean;
+}
+
+export interface LotteryPrizes {
+  lotteryId: string;
+  contestNumber: number;
+  nextContest: number;
+  drawDate: string | null;
+  accumulated: boolean;
+  estimatedPrize: number;
+  estimatedPrizeFormatted: string;
+  prizes: LotteryPrizeTier[];
+}
+
+export function useLotteryPrizes(lotteryId?: string) {
+  return useQuery<LotteryPrizes>({
+    queryKey: ["/api/lotteries", lotteryId, "prizes"],
+    enabled: !!lotteryId,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 2,
+  });
+}
+
 

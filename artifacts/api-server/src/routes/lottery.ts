@@ -130,6 +130,57 @@ router.get("/:id/next-draw", async (req, res) => {
   }
 });
 
+// GET /api/lotteries/:id/prizes — dados reais de premiação da Caixa
+router.get("/:id/prizes", async (req, res) => {
+  const lottery = LOTTERIES.find(l => l.id === req.params.id);
+  if (!lottery) return res.status(404).json({ message: 'Lottery not found' });
+
+  try {
+    const data = await fetchLatestDraw(req.params.id);
+    if (!data) return res.status(503).json({ message: 'Dados indisponíveis no momento' });
+
+    const contestNumber   = data.numero || data.contestNumber || 0;
+    const nextContest     = contestNumber + 1;
+    const estimatedPrize  = data.valorEstimadoProximoConcurso || 0;
+    const drawDate        = data.dataApuracao || data.data || null;
+    const accumulated     = data.acumulado ?? false;
+
+    // Normaliza premiacao de diferentes formatos da Caixa
+    const rawPrizes: any[] = data.premiacao || data.premiacoes || data.listaRateioPremio || [];
+
+    const prizes = rawPrizes.map((p: any, i: number) => {
+      const valor   = p.valorPremio ?? p.valor ?? p.premio ?? p.valorLiquido ?? 0;
+      const winners = p.ganhadores ?? p.numeroPessoas ?? p.vencedores ?? 0;
+      const desc    = p.descricao ?? p.faixaDescricao ?? p.nome ?? `${i + 1}ª Faixa`;
+      return {
+        tier: i + 1,
+        name: desc,
+        winners: Number(winners),
+        prizeAmount: Number(valor),
+        prizeFormatted: Number(valor) > 0
+          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(Number(valor))
+          : '—',
+        isAccumulated: Number(winners) === 0,
+      };
+    });
+
+    res.json({
+      lotteryId: req.params.id,
+      contestNumber,
+      nextContest,
+      drawDate,
+      accumulated,
+      estimatedPrize: Number(estimatedPrize),
+      estimatedPrizeFormatted: Number(estimatedPrize) > 0
+        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(Number(estimatedPrize))
+        : '—',
+      prizes,
+    });
+  } catch (err: any) {
+    res.status(503).json({ message: 'Erro ao buscar prêmios', error: err?.message });
+  }
+});
+
 // GET /api/lotteries/:id/frequency
 router.get("/:id/frequency", async (req, res) => {
   const lottery = LOTTERIES.find(l => l.id === req.params.id);
