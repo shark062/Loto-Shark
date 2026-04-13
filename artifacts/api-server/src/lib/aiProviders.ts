@@ -284,7 +284,7 @@ export function initDefaultProviders(): void {
   const envProviders: Array<{ type: string; name: string; envKey: string; model?: string }> = [
     { type: "openai",     name: "OpenAI",     envKey: "OPENAI_API_KEY" },
     { type: "anthropic",  name: "Anthropic",  envKey: "ANTHROPIC_API_KEY" },
-    { type: "gemini",     name: "Gemini",     envKey: "GEMINI_API_KEY" },
+    { type: "gemini",     name: "Gemini",     envKey: "GOOGLE_API_KEY" },
     { type: "groq",       name: "Groq",       envKey: "GROQ_API_KEY" },
     { type: "deepseek",   name: "DeepSeek",   envKey: "DEEPSEEK_API_KEY" },
     { type: "openrouter", name: "OpenRouter", envKey: "OPENROUTER_API_KEY" },
