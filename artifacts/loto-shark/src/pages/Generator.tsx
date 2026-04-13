@@ -49,6 +49,7 @@ import {
 } from "@/core/sharkMemory";
 import { gerarRelatorio, getEmojiEstrategia, type Relatorio } from "@/core/sharkAnalytics";
 import { desdobramentoInteligente } from "@/core/sharkDesdobramento";
+import { salvarJogosGerados, toSavedGame } from "@/core/sharkSavedGames";
 import BettingPlatformIntegration from "@/components/BettingPlatformIntegration";
 
 const generateGameSchema = z.object({
