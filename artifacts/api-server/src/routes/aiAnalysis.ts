@@ -48,7 +48,7 @@ router.get("/analysis/:lotteryId", async (req, res) => {
   if (cached && Date.now() - cached.ts < CACHE_TTL) return res.json(cached.data);
 
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const draws = await fetchHistoricalDraws(lotteryId, 50).catch(() => [] as number[][]);
     const ctx = buildContext(lotteryId, lottery, draws);
     const { stats } = listProviders();
 
@@ -56,7 +56,10 @@ router.get("/analysis/:lotteryId", async (req, res) => {
 
     if (stats.active > 0) {
       let prompt = "";
-      let systemPrompt = "Você é um especialista em loterias brasileiras. Responda em português, de forma clara e objetiva.";
+      let systemPrompt = `Você é um especialista em análise estatística de loterias brasileiras da plataforma LotoShark.
+Você analisa dados reais da Caixa Econômica Federal para maximizar a precisão das previsões.
+Utilize sempre: frequência histórica, atraso (delay), distribuição por faixa, paridade (par/ímpar) e soma histórica.
+Responda em português, de forma objetiva e baseada em dados. Nunca invente dados — use apenas o que foi fornecido.`;
 
       if (type === "pattern") {
         prompt = `Analise os padrões dos últimos ${draws.length} sorteios da ${lottery.displayName}.
@@ -72,12 +75,34 @@ Quentes: ${ctx.hotNumbers.slice(0,8).join(",")} | Frios: ${ctx.coldNumbers.slice
 
 Responda JSON: {"recommendedStrategy":"hot|cold|mixed|ai","reasoning":"...","numberSelection":{"hotPercentage":N,"warmPercentage":N,"coldPercentage":N},"riskLevel":"baixo|médio|alto","playFrequency":"...","budgetAdvice":"...","expectedImprovement":"..."}`;
       } else {
-        prompt = `Gere uma previsão para o próximo sorteio da ${lottery.displayName} (${lottery.minNumbers} de ${lottery.totalNumbers}).
-${draws.length} sorteios analisados. Soma média: ${ctx.avgSum.toFixed(1)}. Pares médios: ${ctx.avgEvens.toFixed(1)}.
-Quentes: ${ctx.hotNumbers.slice(0,8).join(",")} | Frios: ${ctx.coldNumbers.slice(0,8).join(",")}
-Últimos: ${draws.slice(0,5).map(d=>`[${d.join(",")}]`).join(", ")}
+        // Calcula atraso de cada número para enriquecer o prompt
+        const delayMap: Record<number, number> = {};
+        for (let n = 1; n <= lottery.totalNumbers; n++) {
+          let delay = draws.length;
+          for (let i = 0; i < draws.length; i++) { if (draws[i].includes(n)) { delay = i; break; } }
+          delayMap[n] = delay;
+        }
+        const overdueTop = Object.entries(delayMap).sort((a,b)=>Number(b[1])-Number(a[1])).slice(0,8).map(([n])=>n).join(",");
 
-Responda JSON: {"primaryPrediction":[lista de ${lottery.minNumbers} números de 1 a ${lottery.totalNumbers}],"confidence":0.XX,"reasoning":"...","alternatives":[{"numbers":[...],"strategy":"..."}],"riskLevel":"baixo|médio|alto"}`;
+        prompt = `Gere uma previsão precisa para o próximo sorteio da ${lottery.displayName} (escolha ${lottery.minNumbers} números de 1 a ${lottery.totalNumbers}).
+
+DADOS ESTATÍSTICOS REAIS (${draws.length} sorteios analisados):
+- Números mais frequentes (quentes): ${ctx.hotNumbers.slice(0,10).join(",")}
+- Números menos frequentes (frios): ${ctx.coldNumbers.slice(0,10).join(",")}
+- Números mornos: ${ctx.warmNumbers.slice(0,10).join(",")}
+- Maior atraso (não saem há mais sorteios): ${overdueTop}
+- Soma média histórica: ${ctx.avgSum.toFixed(1)}
+- Média de números pares por sorteio: ${ctx.avgEvens.toFixed(1)}
+- Últimos 5 sorteios: ${draws.slice(0,5).map(d=>`[${d.join(",")}]`).join(", ")}
+
+CRITÉRIOS PARA MAXIMIZAR PRECISÃO:
+1. Misture quentes, mornos e pelo menos 1-2 atrasados (overdue)
+2. Mantenha soma próxima de ${ctx.avgSum.toFixed(0)} (±15%)
+3. Equilibre pares e ímpares próximo de ${ctx.avgEvens.toFixed(0)} pares
+4. Distribua os números pelas faixas do 1 ao ${lottery.totalNumbers}
+5. Evite sequências longas de consecutivos (máx. 2-3)
+
+Responda em JSON: {"primaryPrediction":[exatamente ${lottery.minNumbers} números únicos de 1 a ${lottery.totalNumbers}],"confidence":0.XX,"reasoning":"...","overdueIncluded":[números atrasados incluídos],"sumEstimated":N,"alternatives":[{"numbers":[${lottery.minNumbers} números],"strategy":"quentes|frios|misto|atrasados"}],"riskLevel":"baixo|médio|alto"}`;
       }
 
       try {
@@ -147,7 +172,7 @@ router.get("/meta-reasoning/:lotteryId", async (req, res) => {
   if (!lottery) return res.status(404).json({ message: "Loteria não encontrada" });
 
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const draws = await fetchHistoricalDraws(lotteryId, 50).catch(() => [] as number[][]);
     const ctx = buildContext(lotteryId, lottery, draws);
     const { providers: pList, stats } = listProviders();
 
@@ -180,7 +205,7 @@ router.get("/optimal-combination/:lotteryId", async (req, res) => {
   if (!lottery) return res.status(404).json({ message: "Loteria não encontrada" });
 
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const draws = await fetchHistoricalDraws(lotteryId, 50).catch(() => [] as number[][]);
     const freqs = computeFrequencies(lottery.totalNumbers, draws);
     const ctx = buildContext(lotteryId, lottery, draws);
     const { stats } = listProviders();

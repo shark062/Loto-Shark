@@ -82,8 +82,8 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
     >
       {/* Corpo centralizado */}
       <div className="px-5 pt-6 pb-4 flex flex-col items-center text-center gap-1.5">
-        {/* Emoji grande */}
-        <div className="text-5xl mb-1 leading-none" role="img" aria-label={lottery.displayName}>
+        {/* Emoji */}
+        <div className="text-3xl mb-1 leading-none" role="img" aria-label={lottery.displayName}>
           {cfg.emoji}
         </div>
 

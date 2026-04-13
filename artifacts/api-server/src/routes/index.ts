@@ -57,27 +57,61 @@ router.get("/lottery/latest/:type", async (req: Request, res: Response) => {
 router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
   try {
     const { type } = req.params;
-    const CAIXA_API = 'https://servicebus2.caixa.gov.br/portaldeloterias/api';
-    const resp = await fetch(`${CAIXA_API}/${type}`, {
-      headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
-    });
-    
-    let numbers: number[] = [];
-    if (resp.ok) {
-      const data = await resp.json();
-      numbers = data.dezenas?.map(Number) || data.listaDezenas?.map(Number) || [];
+    const lottery = LOTTERIES.find(l => l.id === type);
+    const totalNumbers = lottery?.totalNumbers || 60;
+
+    const draws = await fetchHistoricalDraws(type, 50);
+    if (draws.length === 0) {
+      return res.json({
+        recommendation: 'Dados insuficientes para análise. Tente novamente em instantes.',
+        stats: { hotNumbers: [], coldNumbers: [], warmNumbers: [], rareNumbers: [], frequencyMap: {}, delayMap: {}, drawsAnalyzed: 0 },
+      });
     }
-    
-    const sorted = [...numbers].sort((a, b) => a - b);
-    const half = Math.floor(sorted.length / 2);
-    
+
+    const freqs = computeFrequencies(totalNumbers, draws);
+    const sorted = [...freqs].sort((a, b) => b.frequency - a.frequency);
+    const hotCut  = Math.floor(sorted.length * 0.25);
+    const coldCut = Math.floor(sorted.length * 0.75);
+
+    const hotNumbers  = sorted.slice(0, hotCut).map(f => f.number);
+    const warmNumbers = sorted.slice(hotCut, coldCut).map(f => f.number);
+    const coldNumbers = sorted.slice(coldCut).map(f => f.number);
+
+    // Atraso real: quantos sorteios desde a última aparição de cada número
+    const delayMap: Record<number, number> = {};
+    for (let n = 1; n <= totalNumbers; n++) {
+      let delay = draws.length;
+      for (let i = 0; i < draws.length; i++) {
+        if (draws[i].includes(n)) { delay = i; break; }
+      }
+      delayMap[n] = delay;
+    }
+
+    // Estatísticas de distribuição
+    const avgSum   = draws.reduce((s, d) => s + d.reduce((a, b) => a + b, 0), 0) / draws.length;
+    const avgEvens = draws.reduce((s, d) => s + d.filter(n => n % 2 === 0).length, 0) / draws.length;
+
+    // Números com maior atraso (overdue)
+    const overdue = Object.entries(delayMap)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 8)
+      .map(([n]) => Number(n));
+
+    const frequencyMap = Object.fromEntries(freqs.map(f => [f.number, f.frequency]));
+
     res.json({
-      recommendation: `Análise baseada no último sorteio. Números quentes: ${sorted.slice(0, 3).join(', ')}`,
+      recommendation: `Análise baseada em ${draws.length} sorteios reais. Quentes: ${hotNumbers.slice(0, 5).join(', ')}. Maior atraso: ${overdue.slice(0, 3).join(', ')}. Soma média: ${Math.round(avgSum)}. Média pares: ${avgEvens.toFixed(1)}.`,
       stats: {
-        hotNumbers: sorted.slice(0, 3),
-        coldNumbers: sorted.slice(-3),
-        rareNumbers: sorted.slice(half - 1, half + 2),
-        frequencyMap: Object.fromEntries(numbers.map(n => [n, Math.floor(Math.random() * 50) + 10])),
+        hotNumbers:   hotNumbers.slice(0, 12),
+        warmNumbers:  warmNumbers.slice(0, 12),
+        coldNumbers:  coldNumbers.slice(0, 12),
+        rareNumbers:  coldNumbers.slice(0, 5),
+        overdueNumbers: overdue,
+        frequencyMap,
+        delayMap,
+        avgSum:    Math.round(avgSum),
+        avgEvens:  parseFloat(avgEvens.toFixed(1)),
+        drawsAnalyzed: draws.length,
       },
     });
   } catch {
@@ -156,7 +190,7 @@ router.post("/games/generate", async (req: Request, res: Response) => {
   };
 
   try {
-    const draws     = await fetchHistoricalDraws(lotteryId, 20);
+    const draws     = await fetchHistoricalDraws(lotteryId, 50);
     const drawsUsed = draws.length;
 
     if (strategy === 'shark') {
@@ -202,15 +236,24 @@ router.post("/games/generate", async (req: Request, res: Response) => {
     }
 
     const freqs = computeFrequencies(lottery.totalNumbers, draws);
+
+    // Confiança baseada na qualidade dos dados: mais sorteios = mais confiável
+    const dataQuality = Math.min(drawsUsed / 50, 1);
+    const baseConfidence: Record<string, number> = {
+      hot: 0.62, cold: 0.58, mixed: 0.65, ai: 0.72, manual: 0.50,
+    };
+    const strategyBase = baseConfidence[strategy] ?? 0.60;
+
     const games = [];
     for (let i = 0; i < count; i++) {
       const selected = generateSmartNumbers(freqs, qty, strategy, lottery.totalNumbers);
+      const confidence = parseFloat((strategyBase * (0.85 + dataQuality * 0.15)).toFixed(2));
       const game = {
         id: Date.now() + i,
         lotteryId,
         selectedNumbers: selected,
         strategy,
-        confidence: parseFloat((0.55 + Math.random() * 0.3).toFixed(2)),
+        confidence,
         reasoning: STRATEGY_REASONING[strategy] || 'Geração baseada em dados reais',
         dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
         matches: 0,

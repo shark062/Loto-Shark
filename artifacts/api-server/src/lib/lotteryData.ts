@@ -140,14 +140,26 @@ export function generateSmartNumbers(frequencies: NumberFrequency[], count: numb
   }
 
   if (strategy === 'ai') {
-    const targetSum = Math.round((totalNumbers + 1) * count / 2);
-    const tolerance = Math.round(targetSum * 0.25);
+    const targetSum  = Math.round((totalNumbers + 1) * count / 2);
+    const tolerance  = Math.round(targetSum * 0.22);
+    const rangeSize  = Math.ceil(totalNumbers / 4); // quadrantes para balancear distribuição
     let best: number[] = [];
     let bestScore = -Infinity;
 
-    for (let attempt = 0; attempt < 150; attempt++) {
-      const weights = frequencies.map(f => f.frequency + 1);
-      const totalW  = weights.reduce((a, b) => a + b, 0);
+    // Pré-computa mapa de frequência para acesso rápido
+    const freqMap = new Map<number, number>(frequencies.map(f => [f.number, f.frequency]));
+    const maxFreq = Math.max(...frequencies.map(f => f.frequency), 1);
+
+    // Peso combinado: frequência + bônus por atraso (números ausentes há mais tempo)
+    const weights = frequencies.map(f => {
+      const freq  = f.frequency + 1;
+      // atraso simulado: números frios têm leve bônus para diversificar
+      const delay = f.temperature === 'cold' ? 1.3 : f.temperature === 'warm' ? 1.1 : 1.0;
+      return freq * delay;
+    });
+    const totalW = weights.reduce((a, b) => a + b, 0);
+
+    for (let attempt = 0; attempt < 500; attempt++) {
       const candidate: number[] = [];
       const used = new Set<number>();
 
@@ -171,19 +183,25 @@ export function generateSmartNumbers(frequencies: NumberFrequency[], count: numb
       }
       if (candidate.length < count) continue;
 
-      const sum    = candidate.reduce((a, b) => a + b, 0);
-      const evens  = candidate.filter(n => n % 2 === 0).length;
-      const odds   = count - evens;
-      const sorted2 = [...candidate].sort((a, b) => a - b);
+      const sorted2     = [...candidate].sort((a, b) => a - b);
+      const sum         = sorted2.reduce((a, b) => a + b, 0);
+      const evens       = sorted2.filter(n => n % 2 === 0).length;
+      const odds        = count - evens;
       const consecutive = sorted2.reduce((c, n, i) => i > 0 && n === sorted2[i - 1] + 1 ? c + 1 : c, 0);
 
-      const sumScore  = 1 - Math.min(Math.abs(sum - targetSum) / (tolerance || 1), 1);
-      const balScore  = 1 - Math.abs(evens - odds) / count;
-      const consScore = consecutive <= 2 ? 1 : 0.5;
-      const freqScore = candidate.reduce((a, n) => a + (frequencies.find(f => f.number === n)?.frequency || 0), 0) / Math.max(count, 1) / Math.max(sorted[0]?.frequency || 1, 1);
+      // Balanceamento por quadrante (distribuição geográfica dos números)
+      const quadrants = [0, 0, 0, 0];
+      sorted2.forEach(n => { quadrants[Math.min(3, Math.floor((n - 1) / rangeSize))]++; });
+      const quadBalance = 1 - (Math.max(...quadrants) - Math.min(...quadrants)) / Math.max(count, 1);
 
-      const score = sumScore * 0.35 + balScore * 0.25 + consScore * 0.15 + freqScore * 0.25;
-      if (score > bestScore) { bestScore = score; best = [...candidate]; }
+      // Score composto
+      const sumScore  = 1 - Math.min(Math.abs(sum - targetSum) / (tolerance || 1), 1);
+      const parScore  = 1 - Math.abs(evens - odds) / count;
+      const consScore = consecutive === 0 ? 0.9 : consecutive <= 2 ? 1.0 : consecutive <= 3 ? 0.7 : 0.4;
+      const freqScore = sorted2.reduce((a, n) => a + (freqMap.get(n) || 0), 0) / count / maxFreq;
+
+      const score = sumScore * 0.30 + parScore * 0.20 + consScore * 0.15 + freqScore * 0.20 + quadBalance * 0.15;
+      if (score > bestScore) { bestScore = score; best = [...sorted2]; }
     }
 
     return (best.length === count ? best : pickRandom(all, count)).sort((a, b) => a - b);
