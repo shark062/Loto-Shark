@@ -10,6 +10,7 @@ import {
   Zap,
   Target,
   ShoppingCart,
+  Radio,
 } from "lucide-react";
 import type { LotteryType } from "@/types/lottery";
 
@@ -74,14 +75,24 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
   const hasPrize = prize !== '—';
   const tr = nextDraw?.timeRemaining;
   const hasCountdown = tr && (tr.days > 0 || tr.hours > 0 || tr.minutes > 0);
+  const isLive = !!(nextDraw as any)?.isLive;
 
   return (
     <div
-      className={`rounded-2xl border ${cfg.borderColor} bg-black/30 hover:bg-black/40 transition-all duration-200 hover:shadow-xl ${cfg.accentGlow}`}
+      className={`rounded-2xl border ${isLive ? 'border-red-500/60 shadow-red-500/10 shadow-lg' : cfg.borderColor} bg-black/30 hover:bg-black/40 transition-all duration-200 hover:shadow-xl ${cfg.accentGlow}`}
       data-testid={`lottery-card-${lottery.id}`}
     >
       {/* Corpo centralizado */}
       <div className="px-5 pt-6 pb-4 flex flex-col items-center text-center gap-1.5">
+        {/* Badge AO VIVO */}
+        {isLive && (
+          <div className="flex items-center gap-1.5 bg-red-500/15 border border-red-500/40 rounded-full px-3 py-1 mb-1">
+            <Radio className="h-3 w-3 text-red-400 animate-pulse" />
+            <span className="text-xs font-bold text-red-400 tracking-widest uppercase">Ao Vivo</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          </div>
+        )}
+
         {/* Emoji */}
         <div className="text-3xl mb-1 leading-none" role="img" aria-label={lottery.displayName}>
           {cfg.emoji}
@@ -116,13 +127,17 @@ function SingleLotteryCard({ lottery }: LotteryCardProps) {
           {hasPrize ? prize : 'Consulte a Caixa'}
         </div>
 
-        {/* Conta regressiva */}
-        {hasCountdown && (
+        {/* Conta regressiva ou status ao vivo */}
+        {isLive ? (
+          <div className="flex items-center gap-2 mt-1 text-sm">
+            <span className="text-red-400 font-bold tracking-wide animate-pulse">● SORTEIO ACONTECENDO AGORA</span>
+          </div>
+        ) : hasCountdown && (
           <div className="flex items-center gap-2 mt-1 text-sm">
             <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="font-mono font-semibold text-yellow-400 tracking-widest">
               {String(tr.days).padStart(2, '0')}d&nbsp;
-              {String(tr.hours).padStart(2, '0')}h&nbsp;
+              {String(tr.hours).padStart(2, '00')}h&nbsp;
               {String(tr.minutes).padStart(2, '0')}m&nbsp;
               {String(tr.seconds ?? 0).padStart(2, '0')}s
             </span>

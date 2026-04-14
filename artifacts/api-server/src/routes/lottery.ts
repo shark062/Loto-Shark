@@ -39,13 +39,26 @@ function getNextDrawDate(drawDays: string[], drawTime: string) {
   const drawDayNumbers = drawDays.map(d => dayMap[d.toLowerCase()] ?? -1).filter(d => d >= 0);
   if (drawDayNumbers.length === 0) drawDayNumbers.push(3);
 
-  // Se hoje é dia de sorteio e ainda não passou o horário em Brasília
+  const brazilH = brazilNow.getUTCHours();
+  const brazilMin = brazilNow.getUTCMinutes();
+  const minutesFromMidnight = brazilH * 60 + brazilMin;
+  const drawMinutes = h * 60 + m;
+
+  // Janela ao vivo: de 30 min antes até 90 min depois do horário do sorteio
+  const LIVE_BEFORE_MIN = 30;
+  const LIVE_AFTER_MIN = 90;
+
   if (drawDayNumbers.includes(today)) {
-    const brazilH = brazilNow.getUTCHours();
-    const brazilMin = brazilNow.getUTCMinutes();
-    if (brazilH < h || (brazilH === h && brazilMin < m)) {
+    // Antes do sorteio (ainda não chegou)
+    if (minutesFromMidnight < drawMinutes) {
       const todayDraw = new Date(now);
-      todayDraw.setUTCHours(h + 3, m, 0, 0); // 20:00 BRT = 23:00 UTC
+      todayDraw.setUTCHours(h + 3, m, 0, 0);
+      return todayDraw;
+    }
+    // Dentro da janela ao vivo (sorteio acontecendo ou recém terminado)
+    if (minutesFromMidnight <= drawMinutes + LIVE_AFTER_MIN) {
+      const todayDraw = new Date(now);
+      todayDraw.setUTCHours(h + 3, m, 0, 0);
       return todayDraw;
     }
   }
@@ -60,9 +73,31 @@ function getNextDrawDate(drawDays: string[], drawTime: string) {
 
   const next = new Date(brazilNow);
   next.setUTCDate(brazilNow.getUTCDate() + daysUntilNext);
-  next.setUTCHours(h + 3, m, 0, 0); // 20:00 BRT = 23:00 UTC
+  next.setUTCHours(h + 3, m, 0, 0);
 
   return next;
+}
+
+function getIsLive(drawDays: string[], drawTime: string): boolean {
+  const dayMap: Record<string, number> = {
+    'domingo': 0, 'sunday': 0,
+    'segunda': 1, 'segunda-feira': 1, 'seg': 1, 'monday': 1,
+    'terça': 2, 'terca': 2, 'ter': 2, 'tuesday': 2,
+    'quarta': 3, 'qua': 3, 'wednesday': 3,
+    'quinta': 4, 'qui': 4, 'thursday': 4,
+    'sexta': 5, 'sex': 5, 'friday': 5,
+    'sábado': 6, 'sabado': 6, 'sáb': 6, 'saturday': 6,
+  };
+  const BRAZIL_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const now = new Date();
+  const brazilNow = new Date(now.getTime() - BRAZIL_OFFSET_MS);
+  const today = brazilNow.getUTCDay();
+  const [h, m] = drawTime.split(':').map(Number);
+  const drawDayNumbers = drawDays.map(d => dayMap[d.toLowerCase()] ?? -1).filter(d => d >= 0);
+  if (!drawDayNumbers.includes(today)) return false;
+  const minutesFromMidnight = brazilNow.getUTCHours() * 60 + brazilNow.getUTCMinutes();
+  const drawMinutes = h * 60 + m;
+  return minutesFromMidnight >= drawMinutes - 30 && minutesFromMidnight <= drawMinutes + 90;
 }
 
 // GET /api/lotteries
@@ -107,6 +142,8 @@ router.get("/:id/next-draw", async (req, res) => {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
+  const isLive = getIsLive(lottery.drawDays, lottery.drawTime);
+
   try {
     const data = await fetchLatestDraw(req.params.id);
     const contestNumber = data?.numero || data?.contestNumber || 1;
@@ -118,6 +155,7 @@ router.get("/:id/next-draw", async (req, res) => {
       drawTime: lottery.drawTime,
       timeRemaining: { days, hours, minutes, seconds },
       estimatedPrize,
+      isLive,
     });
   } catch {
     res.json({
@@ -126,6 +164,7 @@ router.get("/:id/next-draw", async (req, res) => {
       drawTime: lottery.drawTime,
       timeRemaining: { days, hours, minutes, seconds },
       estimatedPrize: 'R$ 0,00',
+      isLive,
     });
   }
 });
