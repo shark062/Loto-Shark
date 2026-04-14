@@ -69,7 +69,10 @@ export function useLotteryPrizes(lotteryId?: string) {
   return useQuery<LotteryPrizes>({
     queryKey: ["/api/lotteries", lotteryId, "prizes"],
     enabled: !!lotteryId,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 0,
+    refetchInterval: 2 * 60 * 1000, // Atualiza a cada 2 minutos (prêmios mudam raramente)
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     retry: 2,
   });
 }
