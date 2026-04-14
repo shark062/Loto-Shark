@@ -237,16 +237,10 @@ export default function Generator() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/games"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/stats"] });
-<<<<<<< HEAD
       queryClient.invalidateQueries({ queryKey: ["/api/user/games"] });
       toast({
         title: "Jogos Gerados!",
         description: `${data.length} jogo(s) gerado(s) e salvos com sucesso.`,
-=======
-      toast({
-        title: "Jogos Gerados!",
-        description: `${data.length} jogo(s) gerado(s) com sucesso.`,
->>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
       });
     },
     onError: (error) => {
