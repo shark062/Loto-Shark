@@ -4,8 +4,11 @@ import lotteryRouter from "./lottery";
 import { Request, Response } from "express";
 import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, generateSmartNumbers } from "../lib/lotteryData";
 import { gerarJogosMaster, gerarDesdobramento } from "../core/sharkEngine";
+<<<<<<< HEAD
 import { db, userGamesTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
+=======
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
 
 const router: IRouter = Router();
 
@@ -79,6 +82,10 @@ router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
     const warmNumbers = sorted.slice(hotCut, coldCut).map(f => f.number);
     const coldNumbers = sorted.slice(coldCut).map(f => f.number);
 
+<<<<<<< HEAD
+=======
+    // Atraso real: quantos sorteios desde a última aparição de cada número
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
     const delayMap: Record<number, number> = {};
     for (let n = 1; n <= totalNumbers; n++) {
       let delay = draws.length;
@@ -88,9 +95,17 @@ router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
       delayMap[n] = delay;
     }
 
+<<<<<<< HEAD
     const avgSum   = draws.reduce((s, d) => s + d.reduce((a, b) => a + b, 0), 0) / draws.length;
     const avgEvens = draws.reduce((s, d) => s + d.filter(n => n % 2 === 0).length, 0) / draws.length;
 
+=======
+    // Estatísticas de distribuição
+    const avgSum   = draws.reduce((s, d) => s + d.reduce((a, b) => a + b, 0), 0) / draws.length;
+    const avgEvens = draws.reduce((s, d) => s + d.filter(n => n % 2 === 0).length, 0) / draws.length;
+
+    // Números com maior atraso (overdue)
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
     const overdue = Object.entries(delayMap)
       .sort((a, b) => Number(b[1]) - Number(a[1]))
       .slice(0, 8)
@@ -151,6 +166,7 @@ router.post("/lottery/generate", (req: Request, res: Response) => {
   res.json(games);
 });
 
+<<<<<<< HEAD
 // GET /api/user/games — busca jogos salvos do banco de dados
 router.get("/user/games", async (req: Request, res: Response) => {
   try {
@@ -243,12 +259,25 @@ router.post("/user/games", async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ message: 'Erro ao salvar jogo', error: err?.message });
   }
+=======
+const userGamesStore: any[] = [];
+
+router.get("/user/games", (req: Request, res: Response) => {
+  res.json(userGamesStore);
+});
+
+router.post("/user/games", (req: Request, res: Response) => {
+  const game = { id: Date.now(), ...req.body, createdAt: new Date().toISOString() };
+  userGamesStore.push(game);
+  res.status(201).json(game);
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
 });
 
 router.post("/user/games/check", (req: Request, res: Response) => {
   res.json({ updatedCount: 0 });
 });
 
+<<<<<<< HEAD
 // GET /api/games — busca jogos salvos do banco de dados
 router.get("/games", async (req: Request, res: Response) => {
   try {
@@ -281,6 +310,11 @@ router.get("/games", async (req: Request, res: Response) => {
   } catch {
     res.json([]);
   }
+=======
+router.get("/games", (req: Request, res: Response) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  res.json(userGamesStore.slice(-limit).reverse());
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
 });
 
 router.post("/games/generate", async (req: Request, res: Response) => {
@@ -315,6 +349,7 @@ router.post("/games/generate", async (req: Request, res: Response) => {
 
       const { jogos, contexto } = gerarJogosMaster(draws, count, lottery.totalNumbers, qty, pesosNorm);
 
+<<<<<<< HEAD
       const insertValues = jogos.map(result => ({
         lotteryId,
         selectedNumbers: result.jogo,
@@ -356,18 +391,51 @@ router.post("/games/generate", async (req: Request, res: Response) => {
         contestNumber: g.contestNumber,
         createdAt: g.createdAt.toISOString(),
       }));
+=======
+      const games = jogos.map((result, i) => {
+        const game = {
+          id: Date.now() + i,
+          lotteryId,
+          selectedNumbers: result.jogo,
+          strategy: 'shark',
+          confidence: parseFloat(Math.min(0.95, 0.60 + result.score / 800).toFixed(2)),
+          reasoning: `Motor Shark Master — ${contexto.estrategiasUsadas.length} estratégias | ${contexto.totalValidados} jogos validados`,
+          dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
+          sharkScore: result.score,
+          sharkOrigem: result.origem,
+          sharkContexto: {
+            hot:  contexto.hot.slice(0, 8),
+            warm: contexto.warm.slice(0, 8),
+            cold: contexto.cold.slice(0, 8),
+            totalCandidatos: contexto.totalCandidatos,
+            totalValidados:  contexto.totalValidados,
+          },
+          matches: 0,
+          prizeWon: '0',
+          contestNumber: null,
+          createdAt: new Date().toISOString(),
+        };
+        userGamesStore.push(game);
+        return game;
+      });
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
 
       return res.json(games);
     }
 
     const freqs = computeFrequencies(lottery.totalNumbers, draws);
 
+<<<<<<< HEAD
+=======
+    // Confiança baseada na qualidade dos dados: mais sorteios = mais confiável
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
     const dataQuality = Math.min(drawsUsed / 50, 1);
     const baseConfidence: Record<string, number> = {
       hot: 0.62, cold: 0.58, mixed: 0.65, ai: 0.72, manual: 0.50,
     };
     const strategyBase = baseConfidence[strategy] ?? 0.60;
 
+<<<<<<< HEAD
     const insertValues = [];
     for (let i = 0; i < count; i++) {
       const selected = generateSmartNumbers(freqs, qty, strategy, lottery.totalNumbers);
@@ -377,10 +445,23 @@ router.post("/games/generate", async (req: Request, res: Response) => {
         selectedNumbers: selected,
         strategy,
         confidence: String(confidence),
+=======
+    const games = [];
+    for (let i = 0; i < count; i++) {
+      const selected = generateSmartNumbers(freqs, qty, strategy, lottery.totalNumbers);
+      const confidence = parseFloat((strategyBase * (0.85 + dataQuality * 0.15)).toFixed(2));
+      const game = {
+        id: Date.now() + i,
+        lotteryId,
+        selectedNumbers: selected,
+        strategy,
+        confidence,
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
         reasoning: STRATEGY_REASONING[strategy] || 'Geração baseada em dados reais',
         dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
         matches: 0,
         prizeWon: '0',
+<<<<<<< HEAD
         contestNumber: null as number | null,
         status: 'pending',
         hits: 0,
@@ -406,6 +487,17 @@ router.post("/games/generate", async (req: Request, res: Response) => {
     res.json(games);
   } catch (err: any) {
     res.status(500).json({ message: 'Erro ao buscar dados da Caixa. Tente novamente.', error: err?.message });
+=======
+        contestNumber: null,
+        createdAt: new Date().toISOString(),
+      };
+      userGamesStore.push(game);
+      games.push(game);
+    }
+    res.json(games);
+  } catch {
+    res.status(500).json({ message: 'Erro ao buscar dados da Caixa. Tente novamente.' });
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
   }
 });
 
@@ -484,6 +576,7 @@ router.post("/auth/register", (req: Request, res: Response) => {
   });
 });
 
+<<<<<<< HEAD
 router.get("/users/stats", async (req: Request, res: Response) => {
   try {
     const games = await db.select().from(userGamesTable);
@@ -499,6 +592,16 @@ router.get("/users/stats", async (req: Request, res: Response) => {
   } catch {
     res.json({ totalGames: 0, totalChecked: 0, wins: 0, winRate: 0, totalPrize: 0 });
   }
+=======
+router.get("/users/stats", (req: Request, res: Response) => {
+  res.json({
+    totalGames: userGamesStore.length,
+    totalChecked: 0,
+    wins: 0,
+    winRate: 0,
+    totalPrize: 0,
+  });
+>>>>>>> c6ac3722441b696c6a6918c654ae43efc7b10e24
 });
 
 router.post("/auth/upgrade", (req: Request, res: Response) => {
