@@ -1,3 +1,40 @@
+# 🦈 PROMPT PARA O REPLIT — LOTO SHARK: NOVA LÓGICA DE GERAÇÃO
+
+> **Instruções de uso:** Cole este prompt inteiro no agente do Replit (ou no chat do AI do projeto). Ele contém tudo que o agente precisa saber: o que fazer, por que fazer, e os trechos exatos a substituir.
+
+---
+
+## CONTEXTO E OBJETIVO
+
+Este projeto é o Loto Shark, um gerador de jogos de loteria. A lógica atual classifica números em **quentes / mornos / frios** usando apenas frequência absoluta nos sorteios históricos.
+
+Preciso mudar a lógica principal para uma abordagem de **variação entre números quentes (alta frequência recente) e dezenas frias (alto atraso/ausência)**. O fluxo novo é:
+
+1. Analisar dados históricos calculando **frequência recente** E **atraso atual** de cada número
+2. Classificar: **quente** = alta freq nos últimos sorteios | **fria** = muitos sorteios consecutivos sem aparecer
+3. Antes de entregar os jogos finais, executar o **desdobramento automático** do pool quente+frio
+4. Filtrar e pontuar as combinações do desdobramento para entregar os jogos com maior margem de acerto
+
+**REGRA FUNDAMENTAL: Não quebrar nenhuma interface existente.** Todas as rotas da API, nomes de campos do banco de dados, e componentes React devem continuar funcionando. As mudanças são **somente** na lógica interna do motor e nas funções de geração.
+
+---
+
+## ARQUIVOS A MODIFICAR
+
+Apenas estes 2 arquivos devem ser alterados. Nenhum outro.
+
+1. `artifacts/api-server/src/core/sharkEngine.ts`
+2. `artifacts/api-server/src/routes/index.ts`
+
+---
+
+## ARQUIVO 1 — SUBSTITUIÇÃO COMPLETA
+
+### `artifacts/api-server/src/core/sharkEngine.ts`
+
+**Substitua o conteúdo COMPLETO deste arquivo pelo código abaixo:**
+
+```typescript
 // ============================================================
 //  Shark Engine v2 — Motor Master com Variação Quente/Fria
 //  Lógica: frequência recente (quente) + atraso acumulado (fria)
@@ -18,12 +55,13 @@ const PESOS_PADRAO: SharkPesos = {
 
 export interface SharkContext {
   frequency:      Record<number, number>;
-  recentFrequency: Record<number, number>;
+  recentFrequency: Record<number, number>; // freq nos últimos 10 sorteios
   delay:          Record<number, number>;
   lastDraw:       number[];
-  hot:  number[];
-  warm: number[];
-  cold: number[];
+  // Mantém hot/warm/cold para compatibilidade com respostas da API
+  hot:  number[]; // alta frequência recente — números quentes
+  warm: number[]; // frequência intermediária
+  cold: number[]; // alto atraso — dezenas frias
   totalNumbers: number;
   minNumbers:   number;
 }
@@ -113,12 +151,12 @@ function buildContextCompleto(
 
   const numeros = Array.from({ length: totalNumbers }, (_, i) => i + 1);
 
-  // Classificação QUENTE: ordenar por frequência recente (últimos 10)
+  // --- Classificação QUENTE: ordenar por frequência recente (últimos 10)
   const sortedByRecent = [...numeros].sort(
     (a, b) => (recentFrequency[b] || 0) - (recentFrequency[a] || 0)
   );
 
-  // Classificação FRIA: ordenar por maior atraso (mais sorteios ausente)
+  // --- Classificação FRIA: ordenar por maior atraso (mais sorteios ausente)
   const sortedByDelay = [...numeros].sort(
     (a, b) => (delay[b] || 0) - (delay[a] || 0)
   );
@@ -301,7 +339,7 @@ function gerarPorPeso(ctx: SharkContext, pesos: SharkPesos = PESOS_PADRAO): numb
   return pick(top, minNumbers);
 }
 
-// Estratégia ALTA REPETIÇÃO: repete ~50% do último sorteio + frias
+// Estratégia ALTA REPETIÇÃO: repete ~60% do último sorteio + frias
 function gerarRepInteligente(ctx: SharkContext): number[] {
   const { lastDraw, cold, totalNumbers, minNumbers } = ctx;
   const repQ  = Math.ceil(minNumbers * 0.50);
@@ -400,6 +438,7 @@ function combinacoes(arr: number[], k: number, limite: number): number[][] {
 
 function buildPoolQuenteFria(ctx: SharkContext, qtdJogos: number): number[] {
   // Pool: top quentes por freq recente + top frias por atraso
+  // Tamanho do pool varia com a quantidade de jogos pedidos (mínimo útil: minNumbers * 1.5)
   const poolSize = Math.min(
     ctx.totalNumbers,
     Math.max(
@@ -481,6 +520,7 @@ export function gerarJogosMaster(
   }
 
   // PASSO 3: Desdobramento do pool quente+fria
+  // Gera um pool concentrado e expande combinações para cobrir mais prêmios
   const pool           = buildPoolQuenteFria(ctx, qtd);
   const limiteDesd     = Math.min(2000, Math.max(500, qtd * 80));
   const combosDesd     = combinacoes(pool, minNumbers, limiteDesd);
@@ -552,3 +592,98 @@ export function gerarDesdobramento(
 
 // Mantém compatibilidade com código antigo
 export { gerarJogosMaster as sharkAutonomo };
+```
+
+---
+
+## ARQUIVO 2 — MUDANÇAS CIRÚRGICAS (NÃO SUBSTITUIR O ARQUIVO INTEIRO)
+
+### `artifacts/api-server/src/routes/index.ts`
+
+Neste arquivo, faça **apenas** as 2 substituições abaixo usando str_replace (ou edição pontual). Não altere nada fora dessas seções.
+
+---
+
+### SUBSTITUIÇÃO 2A — STRATEGY_REASONING no POST /games/generate
+
+**Encontre este bloco exato:**
+
+```typescript
+  const STRATEGY_REASONING: Record<string, string> = {
+    hot:    'Números com maior frequência nos últimos 20 sorteios reais',
+    cold:   'Números com menor frequência nos últimos 20 sorteios reais',
+    mixed:  'Combinação balanceada: 40% quentes, 30% mornos, 30% frios',
+    ai:     'Análise estatística: frequência real + paridade + soma + padrões consecutivos',
+    manual: 'Seleção manual do usuário',
+    shark:  'Motor Shark Autônomo: simula estratégias, escolhe a melhor e gera jogos pontuados',
+  };
+```
+
+**Substitua por:**
+
+```typescript
+  const STRATEGY_REASONING: Record<string, string> = {
+    hot:    'Números quentes: alta frequência recente nos últimos 10 sorteios',
+    cold:   'Dezenas frias: alto atraso acumulado — números vencidos que tendem a compensar',
+    mixed:  'Variação quente+fria: impulso de frequência recente + compensação de atraso',
+    ai:     'Análise estatística avançada: frequência recente + atraso + paridade + distribuição',
+    manual: 'Seleção manual do usuário',
+    shark:  'Motor Shark v2: desdobramento quente/fria → score de variação → melhores jogos',
+  };
+```
+
+---
+
+### SUBSTITUIÇÃO 2B — sharkContexto no bloco strategy === 'shark'
+
+**Encontre este bloco exato:**
+
+```typescript
+        sharkContexto: {
+          hot:  contexto.hot.slice(0, 8),
+          warm: contexto.warm.slice(0, 8),
+          cold: contexto.cold.slice(0, 8),
+          totalCandidatos: contexto.totalCandidatos,
+          totalValidados:  contexto.totalValidados,
+        },
+```
+
+**Substitua por:**
+
+```typescript
+        sharkContexto: {
+          hot:  contexto.hot.slice(0, 8),
+          warm: contexto.warm.slice(0, 8),
+          cold: contexto.cold.slice(0, 8),
+          totalCandidatos:   contexto.totalCandidatos,
+          totalValidados:    contexto.totalValidados,
+          estrategiasUsadas: contexto.estrategiasUsadas,
+        },
+```
+
+---
+
+## VERIFICAÇÃO FINAL
+
+Depois de aplicar as mudanças, confirme:
+
+- [ ] `sharkEngine.ts` exporta `gerarJogosMaster`, `gerarDesdobramento` e `sharkAutonomo` (aliases mantidos)
+- [ ] `SharkContext` ainda tem os campos `hot`, `warm`, `cold` (compatibilidade de resposta)
+- [ ] `SharkPesos` ainda tem `frequencia`, `atraso`, `repeticao` (compatibilidade de entrada)
+- [ ] A rota `POST /api/games/generate` com `strategy: 'shark'` continua funcionando
+- [ ] A rota `POST /api/games/desdobramento` continua funcionando
+- [ ] Nenhum arquivo do frontend foi alterado
+
+---
+
+## RESUMO DA NOVA LÓGICA
+
+| Antes | Depois |
+|---|---|
+| Quente = top 33% por freq total | Quente = top 33% por freq **recente** (últimos 10 sorteios) |
+| Morno = faixa do meio | Morno = faixa intermediária (freq/atraso médios) |
+| Frio = bottom 33% por freq total | Fria = top 33% por **atraso acumulado** (mais sorteios sem sair) |
+| Estratégias: quente/frio/misto/peso/rep | Estratégias: impulso/compensação/variação_pura/peso/rep_alta/rep_baixa |
+| Score: freq global + atraso simples | Score: **bônus de variação** quente+fria no mesmo jogo |
+| Desdobramento: apenas via rota externa | **Desdobramento interno** antes de entregar os jogos finais |
+| Pool do desdobramento: union dos jogos gerados | Pool do desdobramento: **top quentes + top frias por atraso** |

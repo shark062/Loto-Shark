@@ -291,12 +291,12 @@ router.post("/games/generate", async (req: Request, res: Response) => {
   const count = Math.min(Math.max(gamesCount, 1), 100);
 
   const STRATEGY_REASONING: Record<string, string> = {
-    hot:    'Números com maior frequência nos últimos 20 sorteios reais',
-    cold:   'Números com menor frequência nos últimos 20 sorteios reais',
-    mixed:  'Combinação balanceada: 40% quentes, 30% mornos, 30% frios',
-    ai:     'Análise estatística: frequência real + paridade + soma + padrões consecutivos',
+    hot:    'Números quentes: alta frequência recente nos últimos 10 sorteios',
+    cold:   'Dezenas frias: alto atraso acumulado — números vencidos que tendem a compensar',
+    mixed:  'Variação quente+fria: impulso de frequência recente + compensação de atraso',
+    ai:     'Análise estatística avançada: frequência recente + atraso + paridade + distribuição',
     manual: 'Seleção manual do usuário',
-    shark:  'Motor Shark Autônomo: simula estratégias, escolhe a melhor e gera jogos pontuados',
+    shark:  'Motor Shark v2: desdobramento quente/fria → score de variação → melhores jogos',
   };
 
   try {
@@ -328,8 +328,9 @@ router.post("/games/generate", async (req: Request, res: Response) => {
           hot:  contexto.hot.slice(0, 8),
           warm: contexto.warm.slice(0, 8),
           cold: contexto.cold.slice(0, 8),
-          totalCandidatos: contexto.totalCandidatos,
-          totalValidados:  contexto.totalValidados,
+          totalCandidatos:   contexto.totalCandidatos,
+          totalValidados:    contexto.totalValidados,
+          estrategiasUsadas: contexto.estrategiasUsadas,
         },
         matches: 0,
         prizeWon: '0',
