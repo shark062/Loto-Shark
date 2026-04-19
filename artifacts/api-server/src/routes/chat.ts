@@ -39,7 +39,7 @@ async function handleLotteryCommand(message: string): Promise<{ handled: boolean
   // Detect lottery game in message
   const lotteryMap: Record<string, string> = {
     "mega": "megasena", "mega-sena": "megasena", "megasena": "megasena",
-    "lotofácil": "lotofacil", "lotofacil": "lotofacil", "lotofacil": "lotofacil",
+    "lotofácil": "lotofacil", "lotofacil": "lotofacil",
     "quina": "quina",
     "lotomania": "lotomania",
     "dupla sena": "duplasena", "dupla": "duplasena",

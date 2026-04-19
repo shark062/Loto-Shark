@@ -11,7 +11,7 @@ import {
 
 const router = Router();
 
-router.get("/", (req, res) => {
+router.get("/", (_req, res) => {
   res.json(listProviders());
 });
 
@@ -20,30 +20,46 @@ router.get("/evolution", (req, res) => {
   res.json({ log: getEvolutionLog(limit) });
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { type, name, apiKey, model, baseUrl } = req.body;
   if (!type || !name || !apiKey) {
     return res.status(400).json({ message: "type, name e apiKey são obrigatórios" });
   }
-  const provider = addProvider({ type, name, apiKey, model, baseUrl });
-  res.status(201).json(provider);
+  try {
+    const provider = await addProvider({ type, name, apiKey, model, baseUrl });
+    res.status(201).json({ ...provider, apiKey: undefined });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-router.put("/:id", (req, res) => {
-  const updated = updateProvider(req.params.id, req.body);
-  if (!updated) return res.status(404).json({ message: "Provider não encontrado" });
-  res.json(updated);
+router.put("/:id", async (req, res) => {
+  try {
+    const updated = await updateProvider(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: "Provider não encontrado" });
+    res.json({ ...updated, apiKey: undefined });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-router.delete("/:id", (req, res) => {
-  const ok = deleteProvider(req.params.id);
-  if (!ok) return res.status(404).json({ message: "Provider não encontrado" });
-  res.json({ success: true });
+router.delete("/:id", async (req, res) => {
+  try {
+    const ok = await deleteProvider(req.params.id);
+    if (!ok) return res.status(404).json({ message: "Provider não encontrado" });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 router.post("/:id/test", async (req, res) => {
-  const result = await testProvider(req.params.id);
-  res.json(result);
+  try {
+    const result = await testProvider(req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 router.post("/chat", async (req, res) => {

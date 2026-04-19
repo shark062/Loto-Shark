@@ -108,7 +108,13 @@ app.post("/api/meta-reasoning/feedback", (req: Request, res: Response) => {
   res.json({ success: true, message: "Feedback registrado" });
 });
 
-// ── Init ──────────────────────────────────────────────────────
-initDefaultProviders();
+// ── Init (async — carrega providers do banco antes de servir) ──
+(async () => {
+  try {
+    await initDefaultProviders();
+  } catch (err: any) {
+    logger.error({ err: err.message }, "Falha ao inicializar providers");
+  }
+})();
 
 export default app;

@@ -22,11 +22,10 @@ export function useNextDrawInfo(lotteryId?: string) {
   return useQuery<NextDrawInfo>({
     queryKey: ["/api/lotteries", lotteryId, "next-draw"],
     enabled: !!lotteryId,
-    refetchInterval: 1000, // Refetch every second for real-time countdown
-    staleTime: 0, // Always fresh data for real-time countdown
-    gcTime: 0, // Don't cache for real-time updates
+    refetchInterval: 60 * 1000, // Refetch every 60 seconds (countdown calculated client-side)
+    staleTime: 55 * 1000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
 

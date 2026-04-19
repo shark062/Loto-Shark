@@ -1,5 +1,8 @@
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
+import { db } from "@workspace/db";
+import { aiProvidersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +31,7 @@ export interface EvolutionLogEntry {
   timestamp: string;
 }
 
-// ─── In-memory store ──────────────────────────────────────────────────────────
+// ─── In-memory cache (source of truth = Neon DB) ──────────────────────────────
 
 export const providers = new Map<string, ProviderConfig>();
 export const evolutionLog: EvolutionLogEntry[] = [];
@@ -67,6 +70,85 @@ function maskApiKey(key: string): string {
   return `${key.slice(0, 4)}${"*".repeat(Math.min(8, key.length - 6))}${key.slice(-2)}`;
 }
 
+// ─── DB row → ProviderConfig ──────────────────────────────────────────────────
+
+function rowToConfig(row: any): ProviderConfig {
+  return {
+    id: row.id,
+    type: row.type,
+    name: row.name,
+    apiKey: row.apiKey,
+    model: row.model,
+    baseUrl: row.baseUrl,
+    enabled: row.enabled,
+    priority: row.priority,
+    successRate: parseFloat(row.successRate ?? "0.7"),
+    totalCalls: row.totalCalls ?? 0,
+    successCalls: row.successCalls ?? 0,
+    avgLatencyMs: parseFloat(row.avgLatencyMs ?? "0"),
+    lastUsed: row.lastUsed ?? null,
+    lastError: row.lastError ?? null,
+  };
+}
+
+// ─── Load all providers from DB into memory ───────────────────────────────────
+
+export async function loadProvidersFromDB(): Promise<void> {
+  try {
+    const rows = await db.select().from(aiProvidersTable);
+    providers.clear();
+    for (const row of rows) {
+      providers.set(row.id, rowToConfig(row));
+    }
+    logger.info({ count: rows.length }, "Providers carregados do banco de dados");
+  } catch (err: any) {
+    logger.error({ err: err.message }, "Falha ao carregar providers do banco");
+  }
+}
+
+// ─── Persist a provider to DB ─────────────────────────────────────────────────
+
+async function persistProvider(p: ProviderConfig): Promise<void> {
+  try {
+    await db.insert(aiProvidersTable).values({
+      id: p.id,
+      type: p.type,
+      name: p.name,
+      apiKey: p.apiKey,
+      model: p.model,
+      baseUrl: p.baseUrl,
+      enabled: p.enabled,
+      priority: p.priority,
+      successRate: String(p.successRate),
+      totalCalls: p.totalCalls,
+      successCalls: p.successCalls,
+      avgLatencyMs: String(p.avgLatencyMs),
+      lastUsed: p.lastUsed ?? undefined,
+      lastError: p.lastError ?? undefined,
+    }).onConflictDoUpdate({
+      target: aiProvidersTable.id,
+      set: {
+        type: p.type,
+        name: p.name,
+        apiKey: p.apiKey,
+        model: p.model,
+        baseUrl: p.baseUrl,
+        enabled: p.enabled,
+        priority: p.priority,
+        successRate: String(p.successRate),
+        totalCalls: p.totalCalls,
+        successCalls: p.successCalls,
+        avgLatencyMs: String(p.avgLatencyMs),
+        lastUsed: p.lastUsed ?? undefined,
+        lastError: p.lastError ?? undefined,
+        updatedAt: new Date(),
+      },
+    });
+  } catch (err: any) {
+    logger.warn({ err: err.message, id: p.id }, "Falha ao persistir provider no banco");
+  }
+}
+
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 export function listProviders(): {
@@ -82,13 +164,13 @@ export function listProviders(): {
   return { providers: masked, stats: { total: list.length, active, avgSuccessRate } };
 }
 
-export function addProvider(input: {
+export async function addProvider(input: {
   type: string;
   name: string;
   apiKey: string;
   model?: string;
   baseUrl?: string;
-}): ProviderConfig {
+}): Promise<ProviderConfig> {
   const id = randomUUID();
   const provider: ProviderConfig = {
     id,
@@ -109,10 +191,11 @@ export function addProvider(input: {
   providers.set(id, provider);
   evolutionLog.unshift({ providerName: provider.name, action: "added", timestamp: new Date().toISOString() });
   logger.info({ id, type: provider.type, name: provider.name }, "Provider adicionado");
+  await persistProvider(provider);
   return provider;
 }
 
-export function updateProvider(id: string, updates: Partial<ProviderConfig>): ProviderConfig | null {
+export async function updateProvider(id: string, updates: Partial<ProviderConfig>): Promise<ProviderConfig | null> {
   const provider = providers.get(id);
   if (!provider) return null;
   const immutable = ["id", "totalCalls", "successCalls", "successRate"];
@@ -122,14 +205,20 @@ export function updateProvider(id: string, updates: Partial<ProviderConfig>): Pr
     }
   }
   evolutionLog.unshift({ providerName: provider.name, action: "updated", timestamp: new Date().toISOString() });
+  await persistProvider(provider);
   return provider;
 }
 
-export function deleteProvider(id: string): boolean {
+export async function deleteProvider(id: string): Promise<boolean> {
   const provider = providers.get(id);
   if (!provider) return false;
   providers.delete(id);
   evolutionLog.unshift({ providerName: provider.name, action: "removed", timestamp: new Date().toISOString() });
+  try {
+    await db.delete(aiProvidersTable).where(eq(aiProvidersTable.id, id));
+  } catch (err: any) {
+    logger.warn({ err: err.message }, "Falha ao remover provider do banco");
+  }
   return true;
 }
 
@@ -193,6 +282,7 @@ export async function testProvider(id: string): Promise<{
 
     provider.lastUsed = new Date().toISOString();
     evolutionLog.unshift({ providerName: provider.name, action: "success", latencyMs, details: "test", timestamp: new Date().toISOString() });
+    persistProvider(provider).catch(() => {});
     return { success: true, latencyMs, message: "Provider funcionando corretamente" };
   } catch (err: any) {
     const latencyMs = Date.now() - start;
@@ -240,6 +330,7 @@ export async function callBestProvider(prompt: string, systemPrompt?: string): P
           provider.successCalls++;
           provider.successRate = provider.successCalls / provider.totalCalls;
           provider.lastUsed = new Date().toISOString();
+          persistProvider(provider).catch(() => {});
           return text;
         }
       } else {
@@ -265,6 +356,7 @@ export async function callBestProvider(prompt: string, systemPrompt?: string): P
           provider.successCalls++;
           provider.successRate = provider.successCalls / provider.totalCalls;
           provider.lastUsed = new Date().toISOString();
+          persistProvider(provider).catch(() => {});
           return text;
         }
       }
@@ -287,9 +379,16 @@ export function recalcPriorities(): void {
   sorted.forEach((p, i) => { p.priority = i; });
 }
 
-// ─── Initialize default providers from env ───────────────────────────────────
+// ─── Initialize providers: load from DB, seed from env if empty ───────────────
 
-export function initDefaultProviders(): void {
+export async function initDefaultProviders(): Promise<void> {
+  await loadProvidersFromDB();
+
+  if (providers.size > 0) {
+    logger.info({ count: providers.size }, "Providers carregados do banco — sem necessidade de seed");
+    return;
+  }
+
   const envProviders: Array<{ type: string; name: string; envKey: string; model?: string }> = [
     { type: "openai",     name: "OpenAI",     envKey: "OPENAI_API_KEY" },
     { type: "anthropic",  name: "Anthropic",  envKey: "ANTHROPIC_API_KEY" },
@@ -305,14 +404,14 @@ export function initDefaultProviders(): void {
   for (const ep of envProviders) {
     const key = process.env[ep.envKey];
     if (key) {
-      addProvider({ type: ep.type, name: ep.name, apiKey: key, model: ep.model });
+      await addProvider({ type: ep.type, name: ep.name, apiKey: key, model: ep.model });
       added++;
     }
   }
 
   if (added === 0) {
-    logger.warn("Nenhuma chave de API encontrada nas variáveis de ambiente. Configure providers via API /api/ai-providers");
+    logger.warn("Nenhuma chave de API encontrada. Configure providers via /api/ai-providers");
   } else {
-    logger.info({ added }, "Providers inicializados a partir das variáveis de ambiente");
+    logger.info({ added }, "Providers semeados das variáveis de ambiente para o banco de dados");
   }
 }
