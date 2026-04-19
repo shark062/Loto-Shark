@@ -24,3 +24,24 @@ export const userGamesTable = pgTable("user_games", {
 export const insertUserGameSchema = createInsertSchema(userGamesTable).omit({ id: true, createdAt: true });
 export type InsertUserGame = z.infer<typeof insertUserGameSchema>;
 export type UserGame = typeof userGamesTable.$inferSelect;
+
+export const aiProvidersTable = pgTable("ai_providers", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  apiKey: text("api_key").notNull(),
+  model: text("model").notNull(),
+  baseUrl: text("base_url").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  priority: integer("priority").notNull().default(0),
+  successRate: numeric("success_rate").notNull().default("0.7"),
+  totalCalls: integer("total_calls").notNull().default(0),
+  successCalls: integer("success_calls").notNull().default(0),
+  avgLatencyMs: numeric("avg_latency_ms").notNull().default("0"),
+  lastUsed: text("last_used"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type AiProvider = typeof aiProvidersTable.$inferSelect;
