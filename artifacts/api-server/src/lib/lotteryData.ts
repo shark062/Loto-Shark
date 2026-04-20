@@ -14,8 +14,12 @@ export const LOTTERIES = [
 export interface NumberFrequency {
   number: number;
   frequency: number;
+  recentFrequency: number;
+  delay: number;
   percentage: number;
+  recentPercentage: number;
   temperature: 'hot' | 'warm' | 'cold';
+  rank: number;
   isHot?: boolean;
   isCold?: boolean;
 }
@@ -89,22 +93,78 @@ export async function fetchHistoricalDraws(lotteryId: string, count: number = 30
 }
 
 export function computeFrequencies(totalNumbers: number, draws: number[][]): NumberFrequency[] {
-  const freq: Record<number, number> = {};
-  for (let i = 1; i <= totalNumbers; i++) freq[i] = 0;
+  const freq:       Record<number, number> = {};
+  const recentFreq: Record<number, number> = {};
+  const delayMap:   Record<number, number> = {};
+
+  for (let i = 1; i <= totalNumbers; i++) {
+    freq[i] = 0;
+    recentFreq[i] = 0;
+  }
+
+  // Frequência global (todos os sorteios)
   draws.forEach(draw => draw.forEach(n => { if (freq[n] !== undefined) freq[n]++; }));
 
-  const sorted = Object.entries(freq).sort((a, b) => Number(b[1]) - Number(a[1]));
-  const hotCut  = Math.floor(sorted.length * 0.25);
-  const coldCut = Math.floor(sorted.length * 0.75);
-  const hotSet  = new Set(sorted.slice(0, hotCut).map(([n]) => parseInt(n)));
-  const coldSet = new Set(sorted.slice(coldCut).map(([n]) => parseInt(n)));
-  const total   = Math.max(draws.length, 1);
+  // Frequência recente (últimos 10 sorteios)
+  const recentDraws = draws.slice(0, Math.min(10, draws.length));
+  recentDraws.forEach(draw => draw.forEach(n => { if (recentFreq[n] !== undefined) recentFreq[n]++; }));
 
-  return Object.entries(freq).map(([num, frequency]) => {
-    const n = parseInt(num);
-    const temperature: 'hot' | 'warm' | 'cold' = hotSet.has(n) ? 'hot' : coldSet.has(n) ? 'cold' : 'warm';
-    return { number: n, frequency, percentage: Math.round((frequency / total) * 100), temperature, isHot: temperature === 'hot', isCold: temperature === 'cold' };
-  });
+  // Atraso (quantos sorteios consecutivos o número ficou ausente)
+  for (let n = 1; n <= totalNumbers; n++) {
+    const idx = draws.findIndex(d => d.includes(n));
+    delayMap[n] = idx === -1 ? draws.length : idx;
+  }
+
+  // Classificação baseada em frequência recente:
+  // Quentes: top 33% por freq recente → maior relevância estatística atual
+  // Frias:   top 33% por atraso → maior tempo sem aparecer
+  // Mornas:  os 34% restantes
+  const numeros = Array.from({ length: totalNumbers }, (_, i) => i + 1);
+
+  const sortedByRecent = [...numeros].sort((a, b) => (recentFreq[b] || 0) - (recentFreq[a] || 0));
+  const sortedByDelay  = [...numeros].sort((a, b) => (delayMap[b] || 0) - (delayMap[a] || 0));
+
+  const hotCut  = Math.floor(totalNumbers * 0.33);
+  const coldCut = Math.floor(totalNumbers * 0.33);
+
+  const hotSet  = new Set(sortedByRecent.slice(0, hotCut));
+  const coldSet = new Set(sortedByDelay.slice(0, coldCut));
+
+  const totalDraws  = Math.max(draws.length, 1);
+  const recentTotal = Math.max(recentDraws.length, 1);
+
+  // Ordena por frequência global desc para atribuir rank
+  const sorted = [...numeros].sort((a, b) => freq[b] - freq[a]);
+  const rankMap: Record<number, number> = {};
+  sorted.forEach((n, i) => { rankMap[n] = i + 1; });
+
+  return numeros.map(n => {
+    const isHotCandidate  = hotSet.has(n);
+    const isColdCandidate = coldSet.has(n);
+    let temperature: 'hot' | 'warm' | 'cold';
+    if (isHotCandidate && !isColdCandidate) {
+      temperature = 'hot';
+    } else if (isColdCandidate && !isHotCandidate) {
+      temperature = 'cold';
+    } else if (isHotCandidate && isColdCandidate) {
+      temperature = (recentFreq[n] || 0) >= 2 ? 'hot' : 'cold';
+    } else {
+      temperature = 'warm';
+    }
+
+    return {
+      number: n,
+      frequency: freq[n],
+      recentFrequency: recentFreq[n],
+      delay: delayMap[n],
+      percentage: Math.round((freq[n] / totalDraws) * 100),
+      recentPercentage: Math.round((recentFreq[n] / recentTotal) * 100),
+      temperature,
+      rank: rankMap[n],
+      isHot: temperature === 'hot',
+      isCold: temperature === 'cold',
+    };
+  }).sort((a, b) => b.frequency - a.frequency); // Retorna ordenado por frequência (maior → menor)
 }
 
 function pickRandom(arr: number[], n: number): number[] {

@@ -33,7 +33,26 @@ export function useNumberFrequencies(lotteryId?: string) {
   return useQuery<NumberFrequency[]>({
     queryKey: ["/api/lotteries", lotteryId, "frequency"],
     enabled: !!lotteryId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: true,
+    select: (data: any) => {
+      // API pode retornar array direto ou { frequencies, meta }
+      const arr = Array.isArray(data) ? data : (data?.frequencies ?? []);
+      return arr as NumberFrequency[];
+    },
+  });
+}
+
+export function useFrequencyAnalysis(lotteryId?: string) {
+  return useQuery<{ frequencies: NumberFrequency[]; meta: any }>({
+    queryKey: ["/api/lotteries", lotteryId, "frequency"],
+    enabled: !!lotteryId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    select: (data: any) => {
+      if (Array.isArray(data)) return { frequencies: data, meta: {} };
+      return { frequencies: data?.frequencies ?? [], meta: data?.meta ?? {} };
+    },
   });
 }
 

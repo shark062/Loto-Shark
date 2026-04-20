@@ -35,6 +35,7 @@ import {
   BookOpen,
   Award,
   RotateCcw,
+  BarChart3,
 } from "lucide-react";
 import type { UserGame, LotteryType } from "@/types/lottery";
 import {
@@ -152,10 +153,17 @@ export default function Generator() {
 
   // Data queries
   const { data: lotteryTypes, isLoading: lotteriesLoading } = useLotteryTypes();
-  const { data: frequencies } = useQuery({
-    queryKey: [`/api/lotteries/${selectedLotteryId}/frequency`],
+  const { data: frequenciesRaw } = useQuery({
+    queryKey: ["/api/lotteries", selectedLotteryId, "frequency"],
     enabled: !!selectedLotteryId,
+    select: (data: any) => {
+      const arr = Array.isArray(data) ? data : (data?.frequencies ?? []);
+      const meta = Array.isArray(data) ? {} : (data?.meta ?? {});
+      return { frequencies: arr, meta };
+    },
   });
+  const frequencies = frequenciesRaw?.frequencies ?? [];
+  const frequencyMeta = frequenciesRaw?.meta ?? {};
 
   // Form setup
   const form = useForm<GenerateGameForm>({
@@ -318,7 +326,7 @@ export default function Generator() {
   };
 
   const getNumberFrequency = (number: number) => {
-    return frequencies && Array.isArray(frequencies) ? frequencies.find((f: any) => f.number === number) : undefined;
+    return (frequencies as any[]).find((f: any) => f.number === number);
   };
 
   const toggleNumber = (number: number) => {
@@ -847,10 +855,10 @@ export default function Generator() {
                               <span className="font-medium">Análise estatística multivariável</span>
                             </div>
                             <ul className="space-y-1 ml-6">
-                              <li>• Frequência real dos últimos 20 sorteios da Caixa</li>
-                              <li>• Equilíbrio par/ímpar próximo de 50%</li>
-                              <li>• Soma total dentro da faixa estatística esperada</li>
-                              <li>• Evita sequências consecutivas excessivas</li>
+                              <li>• Frequência real dos últimos 30 sorteios da Caixa</li>
+                              <li>• Pesos iguais: frequência recente + atraso acumulado</li>
+                              <li>• Classifica dezenas em quentes, mornos e frias</li>
+                              <li>• Valida paridade e sequências antes de incluir</li>
                             </ul>
                           </div>
                         )}
@@ -861,10 +869,10 @@ export default function Generator() {
                               <span className="font-medium text-primary">Predições com IA</span>
                             </div>
                             <ul className="space-y-1 ml-6">
-                              <li>• 🔬 Simula estratégias nos últimos 20 sorteios reais</li>
-                              <li>• 🏆 Escolhe automaticamente a que teve mais acertos</li>
+                              <li>• 🔬 Analisa os 30 últimos sorteios reais da Caixa</li>
+                              <li>• 🏆 Gera e valida milhares de combinações</li>
                               <li>• 📊 Pontua cada jogo por frequência + atraso + repetição</li>
-                              <li>• ✅ Valida paridade e sequências antes de incluir</li>
+                              <li>• ✅ Valida paridade e sequências para cada modalidade</li>
                               <li>• 🧠 Aprende com os resultados anteriores registrados</li>
                             </ul>
                           </div>
@@ -890,6 +898,80 @@ export default function Generator() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Painel de Análise — exibido quando há jogos gerados */}
+          {generatedGames.length > 0 && (() => {
+            const ctx = (generatedGames[0] as any)?.rawGame?.sharkContexto || (generatedGames[0] as any)?.sharkContexto;
+            if (!ctx) return null;
+            return (
+              <Card className="neon-border bg-black/20 border-primary/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-primary text-sm flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Análise dos {ctx.sorteiosAnalisados || 30} Últimos Sorteios — {ctx.estrategia}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 p-4 pt-0">
+                  {/* Dezenas Quentes */}
+                  {ctx.hot?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-red-400 mb-1.5 flex items-center gap-1">
+                        <Flame className="h-3.5 w-3.5" /> Dezenas Quentes — alta freq. recente ({ctx.hot.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {ctx.hot.map((n: number) => (
+                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-500/80 text-white text-xs font-bold shadow shadow-red-500/40">
+                            {n.toString().padStart(2, '0')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Dezenas Frias */}
+                  {ctx.cold?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-blue-400 mb-1.5 flex items-center gap-1">
+                        <Snowflake className="h-3.5 w-3.5" /> Dezenas Frias — maior atraso ({ctx.cold.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {ctx.cold.map((n: number) => (
+                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-500/80 text-white text-xs font-bold shadow shadow-blue-500/40">
+                            {n.toString().padStart(2, '0')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Dezenas Mornos */}
+                  {ctx.warm?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-yellow-400 mb-1.5 flex items-center gap-1">
+                        <Sun className="h-3.5 w-3.5" /> Dezenas Mornos ({ctx.warm.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {ctx.warm.map((n: number) => (
+                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-yellow-500/70 text-white text-xs font-bold shadow shadow-yellow-500/40">
+                            {n.toString().padStart(2, '0')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pt-1 border-t border-white/10">
+                    <span>📊 {ctx.sorteiosAnalisados || 30} sorteios analisados</span>
+                    <span>✅ {ctx.totalValidados?.toLocaleString('pt-BR')} jogos validados</span>
+                    {ctx.pesosUsados && (
+                      <span>
+                        🔥 freq {Math.round((ctx.pesosUsados.frequencia || 0) * 100)}%
+                        · ❄️ atraso {Math.round((ctx.pesosUsados.atraso || 0) * 100)}%
+                        · 🔄 rep {Math.round((ctx.pesosUsados.repeticao || 0) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Generated Games */}
           <div className="space-y-3">

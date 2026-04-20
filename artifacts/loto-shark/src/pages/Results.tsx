@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Navigation from "@/components/Navigation";
 import CelebrationAnimation from "@/components/CelebrationAnimation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -326,28 +326,52 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
 }
 
 export default function Results() {
+  const queryClient = useQueryClient();
   const [filterLottery, setFilterLottery] = useState<string>('all');
   const [searchContest, setSearchContest] = useState<string>('');
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationPrize, setCelebrationPrize] = useState<string>();
   const [filterDate, setFilterDate] = useState<string>('');
+  const [clearingGames, setClearingGames] = useState(false);
+
+  const handleClearAllGames = async () => {
+    if (!window.confirm('Tem certeza que deseja remover todos os jogos salvos? Esta ação não pode ser desfeita.')) return;
+    setClearingGames(true);
+    try {
+      const r = await fetch('/api/games', { method: 'DELETE' });
+      if (r.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/games'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/users/stats'] });
+      }
+    } finally {
+      setClearingGames(false);
+    }
+  };
 
   const { data: lotteryTypes } = useLotteryTypes();
 
   const { data: userStats, isLoading: statsLoading } = useQuery({
-    queryKey: ['user-stats'],
+    queryKey: ["/api/users/stats"],
     queryFn: async () => {
       const response = await fetch('/api/users/stats');
       if (!response.ok) throw new Error('Failed to fetch user stats');
       return response.json();
     },
-    refetchInterval: 60000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: userGames, isLoading: gamesLoading } = useQuery({
-    queryKey: ["/api/games?limit=50"],
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 30000,
+    queryKey: ["/api/games"],
+    queryFn: async () => {
+      const response = await fetch('/api/games?limit=100');
+      if (!response.ok) throw new Error('Falha ao buscar jogos');
+      return response.json();
+    },
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const gamesList: any[] = (userGames as any[]) || [];
@@ -428,9 +452,18 @@ export default function Results() {
         <div className="text-center mb-5">
           <h2 className="text-xl sm:text-2xl font-bold neon-text text-primary mb-1">Resultados 📊</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">Confira seus acertos, transmissão ao vivo e prêmios</p>
-          <div className="flex justify-center mt-3">
+          <div className="flex justify-center mt-3 gap-2 flex-wrap">
             <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-black flex items-center gap-2 text-xs sm:text-sm">
               <Download className="h-4 w-4" /> Exportar PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleClearAllGames}
+              disabled={clearingGames || gamesList.length === 0}
+              className="border-red-500/50 text-red-400 hover:bg-red-500/10 flex items-center gap-2 text-xs sm:text-sm"
+            >
+              <XCircle className="h-4 w-4" />
+              {clearingGames ? 'Removendo...' : 'Limpar Jogos'}
             </Button>
           </div>
         </div>

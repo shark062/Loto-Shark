@@ -226,11 +226,32 @@ router.get("/:id/frequency", async (req, res) => {
   if (!lottery) return res.status(404).json({ message: 'Lottery not found' });
 
   try {
-    const draws = await fetchHistoricalDraws(req.params.id, 20);
+    const draws       = await fetchHistoricalDraws(req.params.id, 30);
     const frequencies = computeFrequencies(lottery.totalNumbers, draws);
-    res.json(frequencies);
+
+    // Metadados extras para visualização no frontend
+    const hot  = frequencies.filter(f => f.temperature === 'hot');
+    const cold = frequencies.filter(f => f.temperature === 'cold');
+    const warm = frequencies.filter(f => f.temperature === 'warm');
+
+    // Responde com envelope enriquecido mas mantém compatibilidade:
+    // o campo `frequencies` é o array principal (mantém compat com código existente)
+    res.json({
+      frequencies,
+      meta: {
+        lotteryId: lottery.id,
+        totalNumbers: lottery.totalNumbers,
+        minNumbers: lottery.minNumbers,
+        drawsAnalyzed: draws.length,
+        recentWindow: Math.min(10, draws.length),
+        topHot:  hot.slice(0, 10).map(f => f.number),
+        topCold: cold.slice(0, 10).map(f => f.number),
+        topWarm: warm.slice(0, 10).map(f => f.number),
+        topFrequency: frequencies.slice(0, 15).map(f => ({ number: f.number, frequency: f.frequency, temperature: f.temperature })),
+      },
+    });
   } catch {
-    res.json(computeFrequencies(lottery.totalNumbers, []));
+    res.json({ frequencies: computeFrequencies(lottery.totalNumbers, []), meta: {} });
   }
 });
 
@@ -248,22 +269,5 @@ router.get("/:id/history", async (req, res) => {
   }
 });
 
-// POST /api/lotteries/:id/generate
-router.post("/:id/generate", (req, res) => {
-  const lottery = LOTTERIES.find(l => l.id === req.params.id);
-  if (!lottery) return res.status(404).json({ message: 'Lottery not found' });
-  
-  const { quantity = lottery.minNumbers, strategy = 'random', amountOfGames = 1 } = req.body;
-  
-  const games = [];
-  for (let i = 0; i < Math.min(amountOfGames, 50); i++) {
-    games.push({
-      numbers: generateNumbers(lottery, strategy, quantity),
-      strategy,
-    });
-  }
-  
-  res.json(games);
-});
 
 export default router;

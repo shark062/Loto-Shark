@@ -117,14 +117,14 @@ export default function Home() {
 
   // User games and recent results
   const { data: recentGames, isLoading: gamesLoading } = useQuery<UserGame[]>({
-    queryKey: ["/api/games", "limit=10"],
-    staleTime: 2 * 60 * 1000,
-  });
-
-  // AI analysis status
-  const { data: aiAnalysis } = useQuery({
-    queryKey: ["/api/ai/analysis/megasena", "type=prediction"],
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["/api/games"],
+    queryFn: async () => {
+      const res = await fetch('/api/games?limit=10');
+      if (!res.ok) throw new Error('Falha ao buscar jogos');
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+    refetchInterval: 30000,
   });
 
   // Recent winners/celebrations

@@ -286,6 +286,28 @@ router.get("/games", async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/games/:id — remove um jogo específico
+router.delete("/games/:id", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: 'ID inválido' });
+    await db.delete(userGamesTable).where(eq(userGamesTable.id, id));
+    res.json({ success: true, deleted: id });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Erro ao deletar jogo', error: err?.message });
+  }
+});
+
+// DELETE /api/games — zera todos os jogos salvos
+router.delete("/games", async (req: Request, res: Response) => {
+  try {
+    await db.delete(userGamesTable);
+    res.json({ success: true, message: 'Todos os jogos foram removidos com sucesso.' });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Erro ao limpar jogos', error: err?.message });
+  }
+});
+
 // Pesos por estratégia — define o comportamento do Shark Engine por modo
 const STRATEGY_PESOS: Record<string, { frequencia: number; atraso: number; repeticao: number }> = {
   hot:   { frequencia: 0.70, atraso: 0.15, repeticao: 0.15 }, // Prioriza quentes (alta freq recente)

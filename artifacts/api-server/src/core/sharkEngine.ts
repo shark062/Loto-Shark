@@ -175,9 +175,15 @@ function validarJogo(jogo: number[], totalNumbers: number, minNumbers: number): 
   if (new Set(jogo).size !== jogo.length) return false;
   if (jogo.some(n => n < 1 || n > totalNumbers)) return false;
 
-  const pares = jogo.filter(n => n % 2 === 0).length;
-  const minPares = Math.floor(minNumbers * 0.25);
-  const maxPares = Math.ceil(minNumbers * 0.75);
+  // Para loterias de alta densidade (Lotofácil, Lotomania, Dia de Sorte),
+  // a restrição de paridade e sequências precisa ser mais tolerante,
+  // pois quase metade do universo é escolhida — sequências são naturais.
+  const density = minNumbers / totalNumbers;
+
+  const parFactor  = density > 0.45 ? 0.12 : 0.25;
+  const minPares   = Math.floor(minNumbers * parFactor);
+  const maxPares   = minNumbers - minPares;
+  const pares      = jogo.filter(n => n % 2 === 0).length;
   if (pares < minPares || pares > maxPares) return false;
 
   const sorted = [...jogo].sort((a, b) => a - b);
@@ -191,7 +197,12 @@ function validarJogo(jogo: number[], totalNumbers: number, minNumbers: number): 
       seq = 1;
     }
   }
-  const maxSeqPermitida = Math.ceil(minNumbers * 0.35);
+  // Fator de sequência por densidade:
+  // Alta  (>50%): até 65% do min (Lotofácil=9, Lotomania=32)
+  // Média (>30%): até 50% do min (Dia de Sorte=3)
+  // Baixa (≤30%): até 38% do min (Mega-Sena=3, Quina=2)
+  const seqFactor = density > 0.50 ? 0.65 : density > 0.30 ? 0.50 : 0.38;
+  const maxSeqPermitida = Math.ceil(minNumbers * seqFactor);
   if (maxSeq > maxSeqPermitida) return false;
 
   return true;
