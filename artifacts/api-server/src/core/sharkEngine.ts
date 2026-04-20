@@ -4,6 +4,9 @@
 //  Fluxo: análise → desdobramento → score → entrega
 // ============================================================
 
+import { generateGamesFromBase } from './engine';
+import type { LotteryConfig } from '../types/LotteryConfig';
+
 export interface SharkPesos {
   frequencia: number;
   atraso:     number;
@@ -491,13 +494,25 @@ export function gerarJogosMaster(
     validados.push(c);
   }
 
-  // PASSO 3: Desdobramento do pool quente+fria
-  const pool           = buildPoolQuenteFria(ctx, qtd);
-  const limiteDesd     = Math.min(2000, Math.max(500, qtd * 80));
-  const combosDesd     = combinacoes(pool, minNumbers, limiteDesd);
+  // PASSO 3: Desdobramento genérico usando generateGamesFromBase (engine universal)
+  const pool = buildPoolQuenteFria(ctx, qtd);
 
-  // Converte combos do desdobramento para o mesmo formato dos candidatos
-  const candidatosDesd: Array<{ jogo: number[]; origem: string }> = combosDesd
+  const lotteryConfig: LotteryConfig = {
+    name: 'lottery',
+    totalNumbers,
+    pickCount: minNumbers,
+    maxNumber: totalNumbers,
+  };
+
+  const gamesDesd = (() => {
+    try {
+      return generateGamesFromBase(pool, lotteryConfig, Math.min(qtd * 8, 200));
+    } catch {
+      return [];
+    }
+  })();
+
+  const candidatosDesd: Array<{ jogo: number[]; origem: string }> = gamesDesd
     .filter(combo => {
       const key = combo.join(',');
       if (vistos.has(key)) return false;
@@ -505,7 +520,7 @@ export function gerarJogosMaster(
       vistos.add(key);
       return true;
     })
-    .map(combo => ({ jogo: combo, origem: 'desdobramento' }));
+    .map(combo => ({ jogo: combo, origem: 'desdobramento_generico' }));
 
   // PASSO 4: Une candidatos das estratégias + desdobramento
   const todosValidados = [...validados, ...candidatosDesd];

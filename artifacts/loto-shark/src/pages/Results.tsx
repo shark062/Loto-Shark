@@ -419,53 +419,53 @@ export default function Results() {
 
       addBackground();
 
-      doc.setFontSize(22);
+      doc.setFontSize(44);
       doc.setTextColor(255, 255, 255);
-      doc.text("Shark Loterias - Relatório de Resultados", pageWidth / 2, 22, { align: "center" });
+      doc.text("Shark Loterias - Relatório de Resultados", pageWidth / 2, 25, { align: "center" });
 
-      doc.setFontSize(10);
+      doc.setFontSize(20);
       doc.setTextColor(230, 255, 230);
-      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pageWidth / 2, 31, { align: "center" });
+      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pageWidth / 2, 42, { align: "center" });
 
-      doc.setFontSize(14);
+      doc.setFontSize(28);
       doc.setTextColor(255, 255, 255);
-      doc.text("Resumo Geral", 20, 50);
+      doc.text("Resumo Geral", 20, 62);
 
       doc.setDrawColor(255, 255, 255);
       doc.setLineWidth(0.3);
-      doc.line(20, 53, pageWidth - 20, 53);
+      doc.line(20, 67, pageWidth - 20, 67);
 
-      doc.setFontSize(11);
+      doc.setFontSize(22);
       doc.setTextColor(255, 255, 255);
-      doc.text(`Total de Jogos: ${userStats?.totalGames || 0}`, 20, 62);
-      doc.text(`Jogos Premiados: ${userStats?.wins || 0}`, 20, 70);
-      doc.text(`Total Acumulado: R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 78);
+      doc.text(`Total de Jogos: ${userStats?.totalGames || 0}`, 20, 80);
+      doc.text(`Jogos Premiados: ${userStats?.wins || 0}`, 20, 94);
+      doc.text(`Total Acumulado: R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 108);
 
-      doc.line(20, 82, pageWidth - 20, 82);
+      doc.line(20, 114, pageWidth - 20, 114);
 
-      let yPos = 94;
+      let yPos = 130;
       filteredGames.forEach((game: any, index: number) => {
-        if (yPos > pageHeight - 40) {
+        if (yPos > pageHeight - 80) {
           doc.addPage();
           addBackground();
-          yPos = 20;
+          yPos = 25;
         }
 
-        doc.setFontSize(11);
+        doc.setFontSize(22);
         doc.setTextColor(255, 255, 255);
         doc.text(`${index + 1}. ${getLotteryName(game.lotteryId)} - Concurso #${game.contestNumber}`, 20, yPos);
 
-        doc.setFontSize(9);
+        doc.setFontSize(18);
         doc.setTextColor(230, 255, 230);
-        doc.text(`Números: ${game.selectedNumbers.join(", ")}`, 22, yPos + 7);
-        doc.text(`Acertos: ${game.matches} | Prêmio: R$ ${parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 22, yPos + 14);
-        doc.text(`Data: ${new Date(game.createdAt).toLocaleDateString('pt-BR')} | Estratégia: ${game.strategy}`, 22, yPos + 21);
+        doc.text(`Números: ${game.selectedNumbers.join(", ")}`, 22, yPos + 14);
+        doc.text(`Acertos: ${game.matches} | Prêmio: R$ ${parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 22, yPos + 28);
+        doc.text(`Data: ${new Date(game.createdAt).toLocaleDateString('pt-BR')} | Estratégia: ${game.strategy}`, 22, yPos + 42);
 
         doc.setDrawColor(255, 255, 255);
         doc.setLineWidth(0.1);
-        doc.line(20, yPos + 26, pageWidth - 20, yPos + 26);
+        doc.line(20, yPos + 50, pageWidth - 20, yPos + 50);
 
-        yPos += 36;
+        yPos += 64;
       });
 
       doc.save("Shark_Loterias_Relatorio.pdf");
