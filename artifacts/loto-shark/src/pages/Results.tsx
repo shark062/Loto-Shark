@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLotteryTypes } from "@/hooks/useLotteryData";
 import { jsPDF } from "jspdf";
-import logoPng from "@assets/Logo_Futurista_da_Shark_Loterias_1757013773517-B635QT2F_1767439134606.png";
 import { 
   Trophy, 
   Medal,
@@ -404,13 +403,6 @@ export default function Results() {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      try {
-        const imgWidth = 120;
-        const imgHeight = 120;
-        doc.addImage(logoPng, "PNG", (pageWidth - imgWidth) / 2, (pageHeight - imgHeight) / 2, imgWidth, imgHeight, undefined, 'FAST');
-      } catch (e) {}
-
       doc.setFontSize(22);
       doc.setTextColor(0, 150, 255);
       doc.text("Shark Loterias - Relatorio de Resultados", pageWidth / 2, 20, { align: "center" });
