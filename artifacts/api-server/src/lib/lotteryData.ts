@@ -20,9 +20,9 @@ export interface NumberFrequency {
   isCold?: boolean;
 }
 
-type DrawCache = { draws: number[][]; latestContest: number; fetchedAt: number };
+type DrawCache = { draws: number[][]; latestContest: number; fetchedAt: number; cachedCount: number };
 const cache: Record<string, DrawCache> = {};
-const CACHE_TTL = 2 * 60 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
 
 export async function fetchLatestDraw(lotteryId: string): Promise<any | null> {
   try {
@@ -39,7 +39,7 @@ async function fetchDraw(lotteryId: string, contestNumber: number): Promise<numb
   try {
     const resp = await fetch(`${CAIXA_API}/${lotteryId}/${contestNumber}`, {
       headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(6000),
     });
     if (!resp.ok) return null;
     const data = await resp.json();
@@ -50,19 +50,26 @@ async function fetchDraw(lotteryId: string, contestNumber: number): Promise<numb
   }
 }
 
-export async function fetchHistoricalDraws(lotteryId: string, count: number = 20): Promise<number[][]> {
+export async function fetchHistoricalDraws(lotteryId: string, count: number = 30): Promise<number[][]> {
   const cached = cache[lotteryId];
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL && cached.draws.length >= Math.min(count, 5)) {
+
+  // Cache válido apenas se tem sorteios suficientes E não expirou
+  if (
+    cached &&
+    Date.now() - cached.fetchedAt < CACHE_TTL &&
+    cached.draws.length >= count
+  ) {
     return cached.draws.slice(0, count);
   }
 
   const latest = await fetchLatestDraw(lotteryId);
-  if (!latest) return cached?.draws || [];
+  if (!latest) return cached?.draws.slice(0, count) || [];
 
   const latestContest = latest.numero || latest.contestNumber || 0;
   const latestNums = latest.dezenas?.map(Number) || latest.listaDezenas?.map(Number) || [];
   const draws: number[][] = latestNums.length > 0 ? [latestNums] : [];
 
+  // Busca os últimos `count - 1` sorteios anteriores em lotes de 5
   const targets: number[] = [];
   for (let i = 1; i < count && latestContest - i > 0; i++) {
     targets.push(latestContest - i);
@@ -77,8 +84,8 @@ export async function fetchHistoricalDraws(lotteryId: string, count: number = 20
     if (draws.length >= count) break;
   }
 
-  cache[lotteryId] = { draws, latestContest, fetchedAt: Date.now() };
-  return draws;
+  cache[lotteryId] = { draws, latestContest, fetchedAt: Date.now(), cachedCount: draws.length };
+  return draws.slice(0, count);
 }
 
 export function computeFrequencies(totalNumbers: number, draws: number[][]): NumberFrequency[] {

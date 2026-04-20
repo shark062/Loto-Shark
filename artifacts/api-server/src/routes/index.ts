@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import lotteryRouter from "./lottery";
 import { Request, Response } from "express";
-import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, generateSmartNumbers } from "../lib/lotteryData";
+import { LOTTERIES, fetchHistoricalDraws, computeFrequencies } from "../lib/lotteryData";
 import { gerarJogosMaster, gerarDesdobramento } from "../core/sharkEngine";
 import { db, userGamesTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
@@ -62,7 +62,7 @@ router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
     const lottery = LOTTERIES.find(l => l.id === type);
     const totalNumbers = lottery?.totalNumbers || 60;
 
-    const draws = await fetchHistoricalDraws(type, 50);
+    const draws = await fetchHistoricalDraws(type, 30);
     if (draws.length === 0) {
       return res.json({
         recommendation: 'Dados insuficientes para análise. Tente novamente em instantes.',
@@ -121,34 +121,37 @@ router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/lottery/generate", (req: Request, res: Response) => {
-  const { gameType = 'megasena', quantity = 6, amountOfGames = 1, strategy = 'random' } = req.body;
-  
-  const CONFIGS: Record<string, { total: number; min: number }> = {
-    megasena: { total: 60, min: 6 },
-    lotofacil: { total: 25, min: 15 },
-    quina: { total: 80, min: 5 },
-    lotomania: { total: 100, min: 50 },
-    duplasena: { total: 50, min: 6 },
-    timemania: { total: 80, min: 10 },
-    diadesorte: { total: 31, min: 7 },
-    supersete: { total: 10, min: 7 },
-  };
-  
-  const config = CONFIGS[gameType] || { total: 60, min: 6 };
-  const games = [];
-  
-  for (let i = 0; i < Math.min(amountOfGames, 50); i++) {
-    const nums: number[] = [];
-    const qty = Math.max(quantity || config.min, config.min);
-    while (nums.length < qty) {
-      const n = Math.floor(Math.random() * config.total) + 1;
-      if (!nums.includes(n)) nums.push(n);
-    }
-    games.push({ numbers: nums.sort((a, b) => a - b), strategy });
+router.post("/lottery/generate", async (req: Request, res: Response) => {
+  // Rota legada — encaminha para o Shark Engine via /api/games/generate
+  const { gameType, lotteryId, quantity, numbersCount, amountOfGames, gamesCount, strategy = 'mixed' } = req.body;
+  const finalLotteryId  = lotteryId || gameType || 'megasena';
+  const finalGamesCount = gamesCount || amountOfGames || 1;
+  const finalNumbers    = numbersCount || quantity;
+
+  const lottery = LOTTERIES.find(l => l.id === finalLotteryId) || LOTTERIES[0];
+  const qty     = finalNumbers
+    ? Math.min(Math.max(finalNumbers, lottery.minNumbers), lottery.totalNumbers)
+    : lottery.minNumbers;
+  const count = Math.min(Math.max(finalGamesCount, 1), 50);
+
+  try {
+    const draws     = await fetchHistoricalDraws(finalLotteryId, 30);
+    const drawsUsed = draws.length;
+    if (drawsUsed < 2) return res.status(503).json({ message: 'Sorteios indisponíveis no momento.' });
+
+    const pesosEstrategia = STRATEGY_PESOS[strategy] || STRATEGY_PESOS.mixed;
+    const { jogos } = gerarJogosMaster(draws, count, lottery.totalNumbers, qty, pesosEstrategia);
+
+    res.json(jogos.map(j => ({
+      numbers: j.jogo,
+      strategy,
+      sharkScore: j.score,
+      sharkOrigem: j.origem,
+      dataSource: `${drawsUsed} sorteios reais`,
+    })));
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
   }
-  
-  res.json(games);
 });
 
 // GET /api/user/games — busca jogos salvos do banco de dados
@@ -283,6 +286,31 @@ router.get("/games", async (req: Request, res: Response) => {
   }
 });
 
+// Pesos por estratégia — define o comportamento do Shark Engine por modo
+const STRATEGY_PESOS: Record<string, { frequencia: number; atraso: number; repeticao: number }> = {
+  hot:   { frequencia: 0.70, atraso: 0.15, repeticao: 0.15 }, // Prioriza quentes (alta freq recente)
+  cold:  { frequencia: 0.15, atraso: 0.70, repeticao: 0.15 }, // Prioriza frias (maior atraso)
+  mixed: { frequencia: 0.50, atraso: 0.30, repeticao: 0.20 }, // Equilibrado quente+fria
+  ai:    { frequencia: 0.40, atraso: 0.40, repeticao: 0.20 }, // Análise avançada: pesos iguais
+  shark: { frequencia: 0.50, atraso: 0.30, repeticao: 0.20 }, // Motor master (pesos do request têm prioridade)
+};
+
+const STRATEGY_LABEL: Record<string, string> = {
+  hot:   'Números Quentes',
+  cold:  'Dezenas Frias',
+  mixed: 'Estratégia Mista',
+  ai:    'IA Avançada',
+  shark: 'Motor Shark Master',
+};
+
+const STRATEGY_REASONING: Record<string, string> = {
+  hot:   'Análise dos 30 últimos sorteios — prioriza dezenas com alta frequência recente (quentes)',
+  cold:  'Análise dos 30 últimos sorteios — prioriza dezenas com maior atraso acumulado (frias/vencidas)',
+  mixed: 'Análise dos 30 últimos sorteios — combina quentes (frequência recente) + frias (atraso) equilibrado',
+  ai:    'Análise dos 30 últimos sorteios — pesos iguais para frequência recente e atraso, análise estatística completa',
+  shark: 'Motor Shark Master — desdobramento quente/fria com score de variação sobre os 30 últimos sorteios',
+};
+
 router.post("/games/generate", async (req: Request, res: Response) => {
   const { lotteryId = 'megasena', numbersCount, gamesCount = 1, strategy = 'mixed' } = req.body;
 
@@ -290,103 +318,63 @@ router.post("/games/generate", async (req: Request, res: Response) => {
   const qty   = Math.min(Math.max(numbersCount || lottery.minNumbers, lottery.minNumbers), lottery.totalNumbers);
   const count = Math.min(Math.max(gamesCount, 1), 100);
 
-  const STRATEGY_REASONING: Record<string, string> = {
-    hot:    'Números quentes: alta frequência recente nos últimos 10 sorteios',
-    cold:   'Dezenas frias: alto atraso acumulado — números vencidos que tendem a compensar',
-    mixed:  'Variação quente+fria: impulso de frequência recente + compensação de atraso',
-    ai:     'Análise estatística avançada: frequência recente + atraso + paridade + distribuição',
-    manual: 'Seleção manual do usuário',
-    shark:  'Motor Shark v2: desdobramento quente/fria → score de variação → melhores jogos',
-  };
-
   try {
-    const draws     = await fetchHistoricalDraws(lotteryId, 50);
+    // SEMPRE busca os 30 últimos sorteios reais para TODAS as estratégias
+    const draws     = await fetchHistoricalDraws(lotteryId, 30);
     const drawsUsed = draws.length;
 
-    if (strategy === 'shark') {
-      const pesosReq = req.body.pesos;
-      const pesosNorm = pesosReq && typeof pesosReq === 'object'
-        ? {
-            frequencia: Math.max(0.05, Math.min(0.90, Number(pesosReq.frequencia) || 0.50)),
-            atraso:     Math.max(0.05, Math.min(0.90, Number(pesosReq.atraso)     || 0.30)),
-            repeticao:  Math.max(0.05, Math.min(0.90, Number(pesosReq.repeticao)  || 0.20)),
-          }
-        : undefined;
-
-      const { jogos, contexto } = gerarJogosMaster(draws, count, lottery.totalNumbers, qty, pesosNorm);
-
-      const insertValues = jogos.map(result => ({
-        lotteryId,
-        selectedNumbers: result.jogo,
-        strategy: 'shark',
-        confidence: String(parseFloat(Math.min(0.95, 0.60 + result.score / 800).toFixed(2))),
-        reasoning: `Motor Shark Master — ${contexto.estrategiasUsadas.length} estratégias | ${contexto.totalValidados} jogos validados`,
-        dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
-        sharkScore: String(result.score),
-        sharkOrigem: result.origem,
-        sharkContexto: {
-          hot:  contexto.hot.slice(0, 8),
-          warm: contexto.warm.slice(0, 8),
-          cold: contexto.cold.slice(0, 8),
-          totalCandidatos:   contexto.totalCandidatos,
-          totalValidados:    contexto.totalValidados,
-          estrategiasUsadas: contexto.estrategiasUsadas,
-        },
-        matches: 0,
-        prizeWon: '0',
-        contestNumber: null as number | null,
-        status: 'pending',
-        hits: 0,
-      }));
-
-      const inserted = await db.insert(userGamesTable).values(insertValues).returning();
-
-      const games = inserted.map(g => ({
-        id: g.id,
-        lotteryId: g.lotteryId,
-        selectedNumbers: g.selectedNumbers as number[],
-        strategy: g.strategy,
-        confidence: g.confidence ? Number(g.confidence) : undefined,
-        reasoning: g.reasoning,
-        dataSource: g.dataSource,
-        sharkScore: g.sharkScore ? Number(g.sharkScore) : undefined,
-        sharkOrigem: g.sharkOrigem,
-        sharkContexto: g.sharkContexto,
-        matches: g.matches,
-        prizeWon: g.prizeWon,
-        contestNumber: g.contestNumber,
-        createdAt: g.createdAt.toISOString(),
-      }));
-
-      return res.json(games);
-    }
-
-    const freqs = computeFrequencies(lottery.totalNumbers, draws);
-
-    const dataQuality = Math.min(drawsUsed / 50, 1);
-    const baseConfidence: Record<string, number> = {
-      hot: 0.62, cold: 0.58, mixed: 0.65, ai: 0.72, manual: 0.50,
-    };
-    const strategyBase = baseConfidence[strategy] ?? 0.60;
-
-    const insertValues = [];
-    for (let i = 0; i < count; i++) {
-      const selected = generateSmartNumbers(freqs, qty, strategy, lottery.totalNumbers);
-      const confidence = parseFloat((strategyBase * (0.85 + dataQuality * 0.15)).toFixed(2));
-      insertValues.push({
-        lotteryId,
-        selectedNumbers: selected,
-        strategy,
-        confidence: String(confidence),
-        reasoning: STRATEGY_REASONING[strategy] || 'Geração baseada em dados reais',
-        dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
-        matches: 0,
-        prizeWon: '0',
-        contestNumber: null as number | null,
-        status: 'pending',
-        hits: 0,
+    if (drawsUsed < 2) {
+      return res.status(503).json({
+        message: `Não foi possível buscar sorteios reais da ${lottery.displayName}. Aguarde e tente novamente.`,
       });
     }
+
+    // Pesos: usa do request se veio (estratégia shark com pesos customizados), senão usa o padrão da estratégia
+    const pesosReq = req.body.pesos;
+    const pesosEstrategia = STRATEGY_PESOS[strategy] || STRATEGY_PESOS.mixed;
+    const pesosFinais = (strategy === 'shark' && pesosReq && typeof pesosReq === 'object')
+      ? {
+          frequencia: Math.max(0.05, Math.min(0.90, Number(pesosReq.frequencia) || pesosEstrategia.frequencia)),
+          atraso:     Math.max(0.05, Math.min(0.90, Number(pesosReq.atraso)     || pesosEstrategia.atraso)),
+          repeticao:  Math.max(0.05, Math.min(0.90, Number(pesosReq.repeticao)  || pesosEstrategia.repeticao)),
+        }
+      : pesosEstrategia;
+
+    // TODAS as estratégias passam pelo Shark Engine v2 com análise real dos sorteios
+    const { jogos, contexto } = gerarJogosMaster(
+      draws,
+      count,
+      lottery.totalNumbers,
+      qty,
+      pesosFinais,
+    );
+
+    const insertValues = jogos.map(result => ({
+      lotteryId,
+      selectedNumbers: result.jogo,
+      strategy,
+      confidence: String(parseFloat(Math.min(0.95, 0.55 + result.score / 600).toFixed(2))),
+      reasoning: `${STRATEGY_REASONING[strategy] || 'Análise Shark'} | ${contexto.totalValidados} jogos validados`,
+      dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
+      sharkScore: String(result.score),
+      sharkOrigem: result.origem,
+      sharkContexto: {
+        estrategia:        STRATEGY_LABEL[strategy] || strategy,
+        pesosUsados:       pesosFinais,
+        hot:               contexto.hot.slice(0, 10),
+        warm:              contexto.warm.slice(0, 10),
+        cold:              contexto.cold.slice(0, 10),
+        totalCandidatos:   contexto.totalCandidatos,
+        totalValidados:    contexto.totalValidados,
+        estrategiasUsadas: contexto.estrategiasUsadas,
+        sorteiosAnalisados: drawsUsed,
+      },
+      matches: 0,
+      prizeWon: '0',
+      contestNumber: null as number | null,
+      status: 'pending',
+      hits: 0,
+    }));
 
     const inserted = await db.insert(userGamesTable).values(insertValues).returning();
 
@@ -398,6 +386,9 @@ router.post("/games/generate", async (req: Request, res: Response) => {
       confidence: g.confidence ? Number(g.confidence) : undefined,
       reasoning: g.reasoning,
       dataSource: g.dataSource,
+      sharkScore: g.sharkScore ? Number(g.sharkScore) : undefined,
+      sharkOrigem: g.sharkOrigem,
+      sharkContexto: g.sharkContexto,
       matches: g.matches,
       prizeWon: g.prizeWon,
       contestNumber: g.contestNumber,
