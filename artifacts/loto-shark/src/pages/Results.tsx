@@ -399,36 +399,73 @@ export default function Results() {
 
   const totalPrizeWon = filteredGames.reduce((sum, game) => sum + parseFloat(game.prizeWon || "0"), 0);
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
-      doc.setFontSize(22);
-      doc.setTextColor(0, 150, 255);
-      doc.text("Shark Loterias - Relatorio de Resultados", pageWidth / 2, 20, { align: "center" });
-      doc.setFontSize(10);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pageWidth / 2, 28, { align: "center" });
-      doc.setFontSize(14);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Resumo Geral", 20, 45);
-      doc.setFontSize(11);
-      doc.text(`Total de Jogos: ${userStats?.totalGames || 0}`, 20, 55);
-      doc.text(`Jogos Premiados: ${userStats?.wins || 0}`, 20, 62);
-      doc.text(`Total Acumulado: R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 69);
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-      let yPos = 85;
+      const imgRes = await fetch('/folha-pdf.png');
+      const imgBlob = await imgRes.blob();
+      const imgBase64: string = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(imgBlob);
+      });
+
+      const addBackground = () => {
+        doc.addImage(imgBase64, 'PNG', 0, 0, pageWidth, pageHeight);
+      };
+
+      addBackground();
+
+      doc.setFontSize(22);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Shark Loterias - Relatório de Resultados", pageWidth / 2, 22, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.setTextColor(230, 255, 230);
+      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pageWidth / 2, 31, { align: "center" });
+
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Resumo Geral", 20, 50);
+
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.3);
+      doc.line(20, 53, pageWidth - 20, 53);
+
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`Total de Jogos: ${userStats?.totalGames || 0}`, 20, 62);
+      doc.text(`Jogos Premiados: ${userStats?.wins || 0}`, 20, 70);
+      doc.text(`Total Acumulado: R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 78);
+
+      doc.line(20, 82, pageWidth - 20, 82);
+
+      let yPos = 94;
       filteredGames.forEach((game: any, index: number) => {
-        if (yPos > pageHeight - 40) { doc.addPage(); yPos = 20; }
+        if (yPos > pageHeight - 40) {
+          doc.addPage();
+          addBackground();
+          yPos = 20;
+        }
+
         doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
+        doc.setTextColor(255, 255, 255);
         doc.text(`${index + 1}. ${getLotteryName(game.lotteryId)} - Concurso #${game.contestNumber}`, 20, yPos);
+
         doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Números: ${game.selectedNumbers.join(", ")}`, 20, yPos + 7);
-        doc.text(`Acertos: ${game.matches} | Prêmio: R$ ${parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, yPos + 14);
-        doc.text(`Data: ${new Date(game.createdAt).toLocaleDateString('pt-BR')} | Estratégia: ${game.strategy}`, 20, yPos + 21);
-        yPos += 35;
+        doc.setTextColor(230, 255, 230);
+        doc.text(`Números: ${game.selectedNumbers.join(", ")}`, 22, yPos + 7);
+        doc.text(`Acertos: ${game.matches} | Prêmio: R$ ${parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 22, yPos + 14);
+        doc.text(`Data: ${new Date(game.createdAt).toLocaleDateString('pt-BR')} | Estratégia: ${game.strategy}`, 22, yPos + 21);
+
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(0.1);
+        doc.line(20, yPos + 26, pageWidth - 20, yPos + 26);
+
+        yPos += 36;
       });
 
       doc.save("Shark_Loterias_Relatorio.pdf");
