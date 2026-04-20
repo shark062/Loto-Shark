@@ -543,7 +543,7 @@ export function gerarJogosMaster(
       hot:  ctx.hot.slice(0, 10),
       warm: ctx.warm.slice(0, 10),
       cold: ctx.cold.slice(0, 10),
-      totalCandidatos: candidatos.length + combosDesd.length,
+      totalCandidatos: candidatos.length + gamesDesd.length,
       totalValidados:  todosValidados.length,
       estrategiasUsadas: [...ESTRATEGIAS.map(e => e.nome), 'desdobramento'],
     },
