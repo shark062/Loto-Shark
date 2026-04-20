@@ -384,11 +384,6 @@ export function recalcPriorities(): void {
 export async function initDefaultProviders(): Promise<void> {
   await loadProvidersFromDB();
 
-  if (providers.size > 0) {
-    logger.info({ count: providers.size }, "Providers carregados do banco — sem necessidade de seed");
-    return;
-  }
-
   const envProviders: Array<{ type: string; name: string; envKey: string; model?: string }> = [
     { type: "openai",     name: "OpenAI",     envKey: "OPENAI_API_KEY" },
     { type: "anthropic",  name: "Anthropic",  envKey: "ANTHROPIC_API_KEY" },
@@ -400,18 +395,35 @@ export async function initDefaultProviders(): Promise<void> {
     { type: "cohere",     name: "Cohere",     envKey: "COHERE_API_KEY" },
   ];
 
+  // Sempre sincroniza chaves do ambiente com o banco — garante que mudanças de secrets
+  // sejam aplicadas mesmo quando já existem providers no banco.
+  let updated = 0;
   let added = 0;
+
   for (const ep of envProviders) {
-    const key = process.env[ep.envKey];
-    if (key) {
-      await addProvider({ type: ep.type, name: ep.name, apiKey: key, model: ep.model });
+    const envKey = process.env[ep.envKey];
+    if (!envKey) continue;
+
+    // Verifica se já existe um provider deste tipo
+    const existing = [...providers.values()].find(p => p.type === ep.type);
+    if (existing) {
+      // Atualiza a chave se for diferente
+      if (existing.apiKey !== envKey) {
+        await updateProvider(existing.id, { apiKey: envKey, enabled: true });
+        logger.info({ type: ep.type }, "Chave de API atualizada da variável de ambiente");
+        updated++;
+      }
+    } else {
+      // Cria novo provider
+      await addProvider({ type: ep.type, name: ep.name, apiKey: envKey, model: ep.model });
       added++;
     }
   }
 
-  if (added === 0) {
+  const total = providers.size;
+  if (total === 0) {
     logger.warn("Nenhuma chave de API encontrada. Configure providers via /api/ai-providers");
   } else {
-    logger.info({ added }, "Providers semeados das variáveis de ambiente para o banco de dados");
+    logger.info({ total, updated, added }, "Providers sincronizados com variáveis de ambiente");
   }
 }
