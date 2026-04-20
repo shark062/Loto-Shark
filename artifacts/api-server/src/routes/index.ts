@@ -2,10 +2,12 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import lotteryRouter from "./lottery";
 import { Request, Response } from "express";
-import { LOTTERIES, fetchHistoricalDraws, computeFrequencies } from "../lib/lotteryData";
+import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, getHistoryConfig, computeTopPairs } from "../lib/lotteryData";
 import { gerarJogosMaster, gerarDesdobramento } from "../core/sharkEngine";
 import { db, userGamesTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
+import { buildSharkAnalysisContext, callWithFallback, runEnsemble } from "../lib/aiEnsemble";
+import { listProviders } from "../lib/aiProviders";
 
 const router: IRouter = Router();
 
@@ -56,13 +58,14 @@ router.get("/lottery/latest/:type", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
+router.get('/lottery/analyze/:type', async (req: Request, res: Response) => {
   try {
     const { type } = req.params;
     const lottery = LOTTERIES.find(l => l.id === type);
     const totalNumbers = lottery?.totalNumbers || 60;
+    const { optimal } = getHistoryConfig(type);
 
-    const draws = await fetchHistoricalDraws(type, 30);
+    const draws = await fetchHistoricalDraws(type, optimal);
     if (draws.length === 0) {
       return res.json({
         recommendation: 'Dados insuficientes para análise. Tente novamente em instantes.',
@@ -71,13 +74,10 @@ router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
     }
 
     const freqs = computeFrequencies(totalNumbers, draws);
-    const sorted = [...freqs].sort((a, b) => b.frequency - a.frequency);
-    const hotCut  = Math.floor(sorted.length * 0.25);
-    const coldCut = Math.floor(sorted.length * 0.75);
-
-    const hotNumbers  = sorted.slice(0, hotCut).map(f => f.number);
-    const warmNumbers = sorted.slice(hotCut, coldCut).map(f => f.number);
-    const coldNumbers = sorted.slice(coldCut).map(f => f.number);
+    // Usa temperatura do computeFrequencies (fonte única de verdade)
+    const hotNumbers  = freqs.filter(f => f.temperature === 'hot').map(f => f.number);
+    const warmNumbers = freqs.filter(f => f.temperature === 'warm').map(f => f.number);
+    const coldNumbers = freqs.filter(f => f.temperature === 'cold').map(f => f.number);
 
     const delayMap: Record<number, number> = {};
     for (let n = 1; n <= totalNumbers; n++) {
@@ -93,23 +93,25 @@ router.get("/lottery/analyze/:type", async (req: Request, res: Response) => {
 
     const overdue = Object.entries(delayMap)
       .sort((a, b) => Number(b[1]) - Number(a[1]))
-      .slice(0, 8)
+      .slice(0, 10)
       .map(([n]) => Number(n));
 
     const frequencyMap = Object.fromEntries(freqs.map(f => [f.number, f.frequency]));
+    const topPairs = computeTopPairs(draws, 10);
 
     res.json({
-      recommendation: `Análise baseada em ${draws.length} sorteios reais. Quentes: ${hotNumbers.slice(0, 5).join(', ')}. Maior atraso: ${overdue.slice(0, 3).join(', ')}. Soma média: ${Math.round(avgSum)}. Média pares: ${avgEvens.toFixed(1)}.`,
+      recommendation: `Análise de ${draws.length} sorteios reais. Quentes: ${hotNumbers.slice(0,5).join(', ')}. Atrasados: ${overdue.slice(0,3).join(', ')}. Soma média: ${Math.round(avgSum)}. Pares médios: ${avgEvens.toFixed(1)}.`,
       stats: {
-        hotNumbers:   hotNumbers.slice(0, 12),
-        warmNumbers:  warmNumbers.slice(0, 12),
-        coldNumbers:  coldNumbers.slice(0, 12),
-        rareNumbers:  coldNumbers.slice(0, 5),
+        hotNumbers:     hotNumbers.slice(0, 15),
+        warmNumbers:    warmNumbers.slice(0, 15),
+        coldNumbers:    coldNumbers.slice(0, 15),
+        rareNumbers:    coldNumbers.slice(0, 8),
         overdueNumbers: overdue,
         frequencyMap,
         delayMap,
-        avgSum:    Math.round(avgSum),
-        avgEvens:  parseFloat(avgEvens.toFixed(1)),
+        topPairs,
+        avgSum:        Math.round(avgSum),
+        avgEvens:      parseFloat(avgEvens.toFixed(1)),
         drawsAnalyzed: draws.length,
       },
     });
@@ -333,7 +335,7 @@ const STRATEGY_REASONING: Record<string, string> = {
   shark: 'Motor Shark Master — desdobramento quente/fria com score de variação sobre os 30 últimos sorteios',
 };
 
-router.post("/games/generate", async (req: Request, res: Response) => {
+router.post('/games/generate', async (req: Request, res: Response) => {
   const { lotteryId = 'megasena', numbersCount, gamesCount = 1, strategy = 'mixed' } = req.body;
 
   const lottery = LOTTERIES.find(l => l.id === lotteryId) || LOTTERIES[0];
@@ -341,17 +343,17 @@ router.post("/games/generate", async (req: Request, res: Response) => {
   const count = Math.min(Math.max(gamesCount, 1), 100);
 
   try {
-    // SEMPRE busca os 30 últimos sorteios reais para TODAS as estratégias
-    const draws     = await fetchHistoricalDraws(lotteryId, 30);
-    const drawsUsed = draws.length;
+    // Usa histórico adaptativo por modalidade
+    const { optimal } = getHistoryConfig(lotteryId);
+    const draws = await fetchHistoricalDraws(lotteryId, optimal);
 
-    if (drawsUsed < 2) {
+    if (draws.length < 2) {
       return res.status(503).json({
         message: `Não foi possível buscar sorteios reais da ${lottery.displayName}. Aguarde e tente novamente.`,
       });
     }
 
-    // Pesos: usa do request se veio (estratégia shark com pesos customizados), senão usa o padrão da estratégia
+    // Pesos por estratégia
     const pesosReq = req.body.pesos;
     const pesosEstrategia = STRATEGY_PESOS[strategy] || STRATEGY_PESOS.mixed;
     const pesosFinais = (strategy === 'shark' && pesosReq && typeof pesosReq === 'object')
@@ -362,40 +364,82 @@ router.post("/games/generate", async (req: Request, res: Response) => {
         }
       : pesosEstrategia;
 
-    // TODAS as estratégias passam pelo Shark Engine v2 com análise real dos sorteios
-    const { jogos, contexto } = gerarJogosMaster(
-      draws,
-      count,
-      lottery.totalNumbers,
-      qty,
-      pesosFinais,
-    );
+    // --- PIPELINE INTEGRADO ---
+    // 1. Análise estatística (sempre roda)
+    const freqs = computeFrequencies(lottery.totalNumbers, draws);
+    const hotNumbers  = freqs.filter(f => f.temperature === 'hot').map(f => f.number);
+    const coldNumbers = freqs.filter(f => f.temperature === 'cold').map(f => f.number);
+    const warmNumbers = freqs.filter(f => f.temperature === 'warm').map(f => f.number);
+    const frequencyMap: Record<number, number> = {};
+    for (const f of freqs) frequencyMap[f.number] = f.frequency;
+    const avgSum = draws.reduce((s, d) => s + d.reduce((a, b) => a + b, 0), 0) / draws.length;
+    const avgEvens = draws.reduce((s, d) => s + d.filter(n => n % 2 === 0).length, 0) / draws.length;
+    const baseCtx = {
+      lotteryId, lotteryName: lottery.displayName,
+      totalNumbers: lottery.totalNumbers, minNumbers: qty,
+      draws: draws.map((d, i) => ({ contestNumber: i + 1, numbers: d })),
+      hotNumbers, coldNumbers, warmNumbers, frequencyMap, avgSum, avgEvens,
+    };
+    const sharkCtx = buildSharkAnalysisContext(baseCtx, draws);
+
+    // 2. SharkEngine gera candidatos baseados em análise estatística
+    const { jogos, contexto } = gerarJogosMaster(draws, count, lottery.totalNumbers, qty, pesosFinais);
+
+    // 3. Se strategy === 'ai' ou 'shark' e houver IAs disponíveis, refina com ensemble
+    let aiRefinement: any = null;
+    if ((strategy === 'ai' || strategy === 'shark') && count <= 10) {
+      try {
+        const { stats } = listProviders();
+        if (stats.active > 0) {
+          const ensemble = await runEnsemble(sharkCtx);
+          if (ensemble.successfulProviders > 0) {
+            aiRefinement = {
+              consensusNumbers: ensemble.consensusNumbers,
+              confidence: ensemble.overallConfidence,
+              reasoning: ensemble.reasoning,
+              successfulProviders: ensemble.successfulProviders,
+            };
+            // Injeta o jogo consenso da IA como primeiro resultado se não estiver lá
+            const consensusKey = ensemble.consensusNumbers.slice().sort((a,b)=>a-b).join(',');
+            const alreadyIn = jogos.some(j => j.jogo.slice().sort((a,b)=>a-b).join(',') === consensusKey);
+            if (!alreadyIn && jogos.length > 0) {
+              jogos[0] = { jogo: ensemble.consensusNumbers, score: 9999, origem: 'ensemble_ia' };
+            }
+          }
+        }
+      } catch {
+        // Falha silenciosa — SharkEngine já gerou jogos suficientes
+      }
+    }
 
     const insertValues = jogos.map(result => ({
       lotteryId,
       selectedNumbers: result.jogo,
       strategy,
       confidence: String(parseFloat(Math.min(0.95, 0.55 + result.score / 600).toFixed(2))),
-      reasoning: `${STRATEGY_REASONING[strategy] || 'Análise Shark'} | ${contexto.totalValidados} jogos validados`,
-      dataSource: `${drawsUsed} sorteios reais da Caixa Econômica Federal`,
+      reasoning: `${STRATEGY_REASONING[strategy] || 'Análise Shark'} | ${contexto.totalValidados} jogos validados | ${draws.length} sorteios analisados`,
+      dataSource: `${draws.length} sorteios reais da Caixa Econômica Federal`,
       sharkScore: String(result.score),
       sharkOrigem: result.origem,
       sharkContexto: {
         estrategia:        STRATEGY_LABEL[strategy] || strategy,
         pesosUsados:       pesosFinais,
-        hot:               contexto.hot.slice(0, 10),
+        hot:               contexto.hot.slice(0, 12),
         warm:              contexto.warm.slice(0, 10),
         cold:              contexto.cold.slice(0, 10),
+        overdueTop:        sharkCtx.overdueNumbers.slice(0, 8),
+        topPairs:          sharkCtx.topPairs.slice(0, 5),
         totalCandidatos:   contexto.totalCandidatos,
         totalValidados:    contexto.totalValidados,
         estrategiasUsadas: contexto.estrategiasUsadas,
-        sorteiosAnalisados: drawsUsed,
+        sorteiosAnalisados: draws.length,
+        aiRefinement,
       },
-      matches: 0,
-      prizeWon: '0',
+      matches:       0,
+      prizeWon:      '0',
       contestNumber: null as number | null,
-      status: 'pending',
-      hits: 0,
+      status:        'pending',
+      hits:          0,
     }));
 
     const inserted = await db.insert(userGamesTable).values(insertValues).returning();
@@ -420,6 +464,108 @@ router.post("/games/generate", async (req: Request, res: Response) => {
     res.json(games);
   } catch (err: any) {
     res.status(500).json({ message: 'Erro ao buscar dados da Caixa. Tente novamente.', error: err?.message });
+  }
+});
+
+// POST /api/games/score — Pontua um jogo contra o histórico real (sem salvar no banco)
+router.post('/games/score', async (req: Request, res: Response) => {
+  try {
+    const { lotteryId = 'megasena', numbers } = req.body;
+    if (!Array.isArray(numbers) || numbers.length === 0) {
+      return res.status(400).json({ message: 'Envie o campo "numbers" com os números do jogo.' });
+    }
+
+    const lottery = LOTTERIES.find(l => l.id === lotteryId);
+    if (!lottery) return res.status(404).json({ message: 'Loteria não encontrada.' });
+
+    const { optimal } = getHistoryConfig(lotteryId);
+    const draws = await fetchHistoricalDraws(lotteryId, optimal);
+    if (draws.length < 2) return res.status(503).json({ message: 'Histórico indisponível no momento.' });
+
+    const freqs = computeFrequencies(lottery.totalNumbers, draws);
+    const frequencyMap: Record<number, number> = {};
+    for (const f of freqs) frequencyMap[f.number] = f.frequency;
+
+    const delayMap: Record<number, number> = {};
+    for (let n = 1; n <= lottery.totalNumbers; n++) {
+      const idx = draws.findIndex(d => d.includes(n));
+      delayMap[n] = idx === -1 ? draws.length : idx;
+    }
+
+    const avgSum = draws.reduce((s, d) => s + d.reduce((a, b) => a + b, 0), 0) / draws.length;
+    const avgEvens = draws.reduce((s, d) => s + d.filter(n => n % 2 === 0).length, 0) / draws.length;
+
+    const hotNumbers  = freqs.filter(f => f.temperature === 'hot').map(f => f.number);
+    const coldNumbers = freqs.filter(f => f.temperature === 'cold').map(f => f.number);
+
+    // Calcula score do jogo
+    const gameNums = numbers as number[];
+    const sumTotal  = gameNums.reduce((a, b) => a + b, 0);
+    const evenCount = gameNums.filter(n => n % 2 === 0).length;
+    const hotCount  = gameNums.filter(n => hotNumbers.includes(n)).length;
+    const coldCount = gameNums.filter(n => coldNumbers.includes(n)).length;
+    const warmCount = gameNums.length - hotCount - coldCount;
+    const maxDelay  = Math.max(...gameNums.map(n => delayMap[n] || 0));
+    const avgFreq   = gameNums.reduce((s, n) => s + (frequencyMap[n] || 0), 0) / gameNums.length;
+
+    const sumScore  = Math.max(0, 100 - Math.abs(sumTotal - avgSum) / avgSum * 100);
+    const parScore  = Math.max(0, 100 - Math.abs(evenCount - avgEvens) * 20);
+    const hotScore  = Math.min(100, (hotCount / Math.max(lottery.minNumbers, 1)) * 150);
+    const delayBonus = Math.min(40, maxDelay * 2);
+    const freqScore = Math.min(100, (avgFreq / Math.max(...Object.values(frequencyMap), 1)) * 100);
+
+    const totalScore = Math.round(sumScore * 0.25 + parScore * 0.20 + hotScore * 0.30 + freqScore * 0.15 + delayBonus * 0.10);
+
+    // Últimos 20 sorteios: quantos acertos teria tido em média
+    const recentHits = draws.slice(0, 20).map(d => gameNums.filter(n => d.includes(n)).length);
+    const avgHits = recentHits.reduce((a, b) => a + b, 0) / recentHits.length;
+
+    const topPairs = computeTopPairs(draws, 20);
+    const gamePairs: string[] = [];
+    for (let i = 0; i < gameNums.length; i++)
+      for (let j = i + 1; j < gameNums.length; j++) {
+        const pair = [gameNums[i], gameNums[j]].sort((a, b) => a - b);
+        const found = topPairs.find(p => p.pair[0] === pair[0] && p.pair[1] === pair[1]);
+        if (found) gamePairs.push(`(${pair[0]},${pair[1]}):${found.count}x`);
+      }
+
+    res.json({
+      lotteryId,
+      numbers: gameNums.sort((a, b) => a - b),
+      score: totalScore,
+      scoreBreakdown: {
+        sumScore:   Math.round(sumScore),
+        parScore:   Math.round(parScore),
+        hotScore:   Math.round(hotScore),
+        freqScore:  Math.round(freqScore),
+        delayBonus: Math.round(delayBonus),
+      },
+      composition: {
+        hotCount,
+        warmCount,
+        coldCount,
+        sumTotal,
+        evenCount,
+        oddCount: gameNums.length - evenCount,
+        maxDelay,
+        avgFrequency: parseFloat(avgFreq.toFixed(1)),
+      },
+      historicalSimulation: {
+        drawsChecked: recentHits.length,
+        avgHitsPerDraw: parseFloat(avgHits.toFixed(2)),
+        maxHits: Math.max(...recentHits),
+        minHits: Math.min(...recentHits),
+        hitsDistribution: recentHits,
+      },
+      coOccurrencePairs: gamePairs,
+      recommendation: totalScore >= 70
+        ? 'Jogo com boa cobertura estatística 🟢'
+        : totalScore >= 50
+        ? 'Jogo com cobertura moderada 🟡'
+        : 'Jogo com baixa aderência estatística 🔴',
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Erro ao pontuar jogo.', error: err?.message });
   }
 });
 

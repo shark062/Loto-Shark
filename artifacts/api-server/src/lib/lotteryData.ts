@@ -1,4 +1,23 @@
+import { db } from '@workspace/db';
+import { lotteryDrawsCache } from '@workspace/db';
+
 const CAIXA_API = 'https://servicebus2.caixa.gov.br/portaldeloterias/api';
+
+// Histórico ótimo por modalidade (quantidade de sorteios para análise confiável)
+const HISTORY_CONFIG: Record<string, { optimal: number; recent: number }> = {
+  lotofacil:  { optimal: 200, recent: 30 }, // sorteia 6x/semana → precisa mais histórico
+  quina:      { optimal: 150, recent: 25 }, // sorteia 6x/semana
+  lotomania:  { optimal: 100, recent: 20 },
+  megasena:   { optimal: 100, recent: 20 }, // sorteia 3x/semana
+  duplasena:  { optimal: 100, recent: 20 },
+  timemania:  { optimal: 80,  recent: 15 },
+  diadesorte: { optimal: 80,  recent: 15 },
+  supersete:  { optimal: 60,  recent: 10 },
+};
+
+export function getHistoryConfig(lotteryId: string): { optimal: number; recent: number } {
+  return HISTORY_CONFIG[lotteryId] || { optimal: 100, recent: 20 };
+}
 
 export const LOTTERIES = [
   { id: 'megasena',   displayName: 'Mega-Sena',    emoji: '💎', minNumbers: 6,  maxNumbers: 15, totalNumbers: 60,  drawDays: ['Terça','Quinta','Sábado'],              drawTime: '20:00', isActive: true },
@@ -22,11 +41,13 @@ export interface NumberFrequency {
   rank: number;
   isHot?: boolean;
   isCold?: boolean;
+  recentWindow?: number;
 }
 
-type DrawCache = { draws: number[][]; latestContest: number; fetchedAt: number; cachedCount: number };
-const cache: Record<string, DrawCache> = {};
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+const CACHE_TTL_MS = 45 * 60 * 1000; // 45 minutos
+
+// Cache em memória como fallback rápido (evita hits desnecessários ao banco)
+const memCache: Record<string, { draws: number[][]; fetchedAt: number }> = {};
 
 export async function fetchLatestDraw(lotteryId: string): Promise<any | null> {
   try {
@@ -46,7 +67,7 @@ async function fetchDraw(lotteryId: string, contestNumber: number): Promise<numb
       signal: AbortSignal.timeout(6000),
     });
     if (!resp.ok) return null;
-    const data = await resp.json();
+    const data = await resp.json() as any;
     const nums = data.dezenas?.map(Number) || data.listaDezenas?.map(Number) || [];
     return nums.length > 0 ? nums : null;
   } catch {
@@ -54,100 +75,153 @@ async function fetchDraw(lotteryId: string, contestNumber: number): Promise<numb
   }
 }
 
-export async function fetchHistoricalDraws(lotteryId: string, count: number = 30): Promise<number[][]> {
-  const cached = cache[lotteryId];
+export async function fetchHistoricalDraws(lotteryId: string, count?: number): Promise<number[][]> {
+  const config = getHistoryConfig(lotteryId);
+  const targetCount = count ?? config.optimal;
 
-  // Cache válido apenas se tem sorteios suficientes E não expirou
-  if (
-    cached &&
-    Date.now() - cached.fetchedAt < CACHE_TTL &&
-    cached.draws.length >= count
-  ) {
-    return cached.draws.slice(0, count);
+  // 1. Tenta cache em memória (mais rápido)
+  const mem = memCache[lotteryId];
+  if (mem && Date.now() - mem.fetchedAt < CACHE_TTL_MS && mem.draws.length >= targetCount) {
+    return mem.draws.slice(0, targetCount);
   }
 
+  // 2. Tenta cache no banco (sobrevive a restarts)
+  try {
+    const { eq } = await import('drizzle-orm');
+    const rows = await db.select().from(lotteryDrawsCache).where(eq(lotteryDrawsCache.lotteryId, lotteryId)).limit(1);
+    if (rows.length > 0) {
+      const row = rows[0];
+      const ageMs = Date.now() - new Date(row.fetchedAt).getTime();
+      if (ageMs < CACHE_TTL_MS && row.draws.length >= targetCount) {
+        // Atualiza memCache também
+        memCache[lotteryId] = { draws: row.draws, fetchedAt: Date.now() - ageMs };
+        return row.draws.slice(0, targetCount);
+      }
+    }
+  } catch {
+    // Se o banco falhar, continua para buscar da Caixa
+  }
+
+  // 3. Busca da API da Caixa
   const latest = await fetchLatestDraw(lotteryId);
-  if (!latest) return cached?.draws.slice(0, count) || [];
+  if (!latest) {
+    // Retorna o que tiver em memória ou banco, mesmo expirado
+    if (mem?.draws?.length) return mem.draws.slice(0, targetCount);
+    return [];
+  }
 
   const latestContest = latest.numero || latest.contestNumber || 0;
   const latestNums = latest.dezenas?.map(Number) || latest.listaDezenas?.map(Number) || [];
   const draws: number[][] = latestNums.length > 0 ? [latestNums] : [];
 
-  // Busca os últimos `count - 1` sorteios anteriores em lotes de 5
   const targets: number[] = [];
-  for (let i = 1; i < count && latestContest - i > 0; i++) {
+  for (let i = 1; i < targetCount && latestContest - i > 0; i++) {
     targets.push(latestContest - i);
   }
 
-  for (let i = 0; i < targets.length; i += 5) {
-    const batch = targets.slice(i, i + 5);
+  // Busca em lotes de 10 para velocidade
+  for (let i = 0; i < targets.length; i += 10) {
+    const batch = targets.slice(i, i + 10);
     const results = await Promise.allSettled(batch.map(n => fetchDraw(lotteryId, n)));
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value) draws.push(r.value);
     }
-    if (draws.length >= count) break;
+    if (draws.length >= targetCount) break;
   }
 
-  cache[lotteryId] = { draws, latestContest, fetchedAt: Date.now(), cachedCount: draws.length };
-  return draws.slice(0, count);
+  // 4. Salva no cache em memória
+  memCache[lotteryId] = { draws, fetchedAt: Date.now() };
+
+  // 5. Persiste no banco (fire-and-forget para não bloquear a resposta)
+  (async () => {
+    try {
+      const { eq } = await import('drizzle-orm');
+      await db.insert(lotteryDrawsCache).values({
+        lotteryId,
+        draws,
+        latestContest,
+        fetchedAt: new Date(),
+        drawCount: draws.length,
+      }).onConflictDoUpdate({
+        target: lotteryDrawsCache.lotteryId,
+        set: {
+          draws,
+          latestContest,
+          fetchedAt: new Date(),
+          drawCount: draws.length,
+        },
+      });
+    } catch { /* silencioso */ }
+  })();
+
+  return draws.slice(0, targetCount);
 }
 
 export function computeFrequencies(totalNumbers: number, draws: number[][]): NumberFrequency[] {
-  const freq:       Record<number, number> = {};
+  const freq: Record<number, number>       = {};
   const recentFreq: Record<number, number> = {};
-  const delayMap:   Record<number, number> = {};
+  const delayMap: Record<number, number>   = {};
 
   for (let i = 1; i <= totalNumbers; i++) {
     freq[i] = 0;
     recentFreq[i] = 0;
   }
 
-  // Frequência global (todos os sorteios)
+  // Frequência global
   draws.forEach(draw => draw.forEach(n => { if (freq[n] !== undefined) freq[n]++; }));
 
-  // Frequência recente (últimos 10 sorteios)
-  const recentDraws = draws.slice(0, Math.min(10, draws.length));
+  // Janela recente adaptativa: 20% dos sorteios, mínimo 10, máximo 30
+  const recentWindow = Math.min(30, Math.max(10, Math.floor(draws.length * 0.20)));
+  const recentDraws = draws.slice(0, Math.min(recentWindow, draws.length));
   recentDraws.forEach(draw => draw.forEach(n => { if (recentFreq[n] !== undefined) recentFreq[n]++; }));
 
-  // Atraso (quantos sorteios consecutivos o número ficou ausente)
+  // Atraso (sorteios consecutivos sem aparecer)
   for (let n = 1; n <= totalNumbers; n++) {
     const idx = draws.findIndex(d => d.includes(n));
     delayMap[n] = idx === -1 ? draws.length : idx;
   }
 
-  // Classificação baseada em frequência recente:
-  // Quentes: top 33% por freq recente → maior relevância estatística atual
-  // Frias:   top 33% por atraso → maior tempo sem aparecer
-  // Mornas:  os 34% restantes
   const numeros = Array.from({ length: totalNumbers }, (_, i) => i + 1);
-
-  const sortedByRecent = [...numeros].sort((a, b) => (recentFreq[b] || 0) - (recentFreq[a] || 0));
-  const sortedByDelay  = [...numeros].sort((a, b) => (delayMap[b] || 0) - (delayMap[a] || 0));
-
-  const hotCut  = Math.floor(totalNumbers * 0.33);
-  const coldCut = Math.floor(totalNumbers * 0.33);
-
-  const hotSet  = new Set(sortedByRecent.slice(0, hotCut));
-  const coldSet = new Set(sortedByDelay.slice(0, coldCut));
-
   const totalDraws  = Math.max(draws.length, 1);
   const recentTotal = Math.max(recentDraws.length, 1);
 
-  // Ordena por frequência global desc para atribuir rank
-  const sorted = [...numeros].sort((a, b) => freq[b] - freq[a]);
+  // Score combinado: 40% frequência global normalizada + 60% frequência recente normalizada
+  const maxGlobalFreq = Math.max(...numeros.map(n => freq[n] || 0), 1);
+  const maxRecentFreq = Math.max(...numeros.map(n => recentFreq[n] || 0), 1);
+
+  const combinedScore = (n: number): number => {
+    const globalNorm = (freq[n] || 0) / maxGlobalFreq;
+    const recentNorm = (recentFreq[n] || 0) / maxRecentFreq;
+    return globalNorm * 0.40 + recentNorm * 0.60;
+  };
+
+  // Classificação por score combinado (quentes) e por atraso (frias)
+  const sortedByCombined = [...numeros].sort((a, b) => combinedScore(b) - combinedScore(a));
+  const sortedByDelay    = [...numeros].sort((a, b) => (delayMap[b] || 0) - (delayMap[a] || 0));
+
+  // Top 30% por score combinado = quentes; Top 25% por atraso = frias; resto = mornas
+  const hotCut  = Math.floor(totalNumbers * 0.30);
+  const coldCut = Math.floor(totalNumbers * 0.25);
+
+  const hotSet  = new Set(sortedByCombined.slice(0, hotCut));
+  const coldSet = new Set(sortedByDelay.slice(0, coldCut));
+
+  // Rank por frequência global para compatibilidade
+  const sortedByGlobal = [...numeros].sort((a, b) => freq[b] - freq[a]);
   const rankMap: Record<number, number> = {};
-  sorted.forEach((n, i) => { rankMap[n] = i + 1; });
+  sortedByGlobal.forEach((n, i) => { rankMap[n] = i + 1; });
 
   return numeros.map(n => {
-    const isHotCandidate  = hotSet.has(n);
-    const isColdCandidate = coldSet.has(n);
     let temperature: 'hot' | 'warm' | 'cold';
-    if (isHotCandidate && !isColdCandidate) {
+    const isHot  = hotSet.has(n);
+    const isCold = coldSet.has(n);
+
+    if (isHot && !isCold) {
       temperature = 'hot';
-    } else if (isColdCandidate && !isHotCandidate) {
+    } else if (isCold && !isHot) {
       temperature = 'cold';
-    } else if (isHotCandidate && isColdCandidate) {
-      temperature = (recentFreq[n] || 0) >= 2 ? 'hot' : 'cold';
+    } else if (isHot && isCold) {
+      temperature = combinedScore(n) >= 0.50 ? 'hot' : 'cold';
     } else {
       temperature = 'warm';
     }
@@ -163,8 +237,15 @@ export function computeFrequencies(totalNumbers: number, draws: number[][]): Num
       rank: rankMap[n],
       isHot: temperature === 'hot',
       isCold: temperature === 'cold',
+      recentWindow,
     };
-  }).sort((a, b) => b.frequency - a.frequency); // Retorna ordenado por frequência (maior → menor)
+  }).sort((a, b) => {
+    // Quentes primeiro → mornas → frias; dentro de cada grupo, por frequência global desc
+    const tempOrder = { hot: 0, warm: 1, cold: 2 };
+    const tDiff = tempOrder[a.temperature] - tempOrder[b.temperature];
+    if (tDiff !== 0) return tDiff;
+    return b.frequency - a.frequency;
+  });
 }
 
 function pickRandom(arr: number[], n: number): number[] {
@@ -209,18 +290,15 @@ export function generateSmartNumbers(frequencies: NumberFrequency[], count: numb
   if (strategy === 'ai') {
     const targetSum  = Math.round((totalNumbers + 1) * count / 2);
     const tolerance  = Math.round(targetSum * 0.22);
-    const rangeSize  = Math.ceil(totalNumbers / 4); // quadrantes para balancear distribuição
+    const rangeSize  = Math.ceil(totalNumbers / 4);
     let best: number[] = [];
     let bestScore = -Infinity;
 
-    // Pré-computa mapa de frequência para acesso rápido
     const freqMap = new Map<number, number>(frequencies.map(f => [f.number, f.frequency]));
     const maxFreq = Math.max(...frequencies.map(f => f.frequency), 1);
 
-    // Peso combinado: frequência + bônus por atraso (números ausentes há mais tempo)
     const weights = frequencies.map(f => {
       const freq  = f.frequency + 1;
-      // atraso simulado: números frios têm leve bônus para diversificar
       const delay = f.temperature === 'cold' ? 1.3 : f.temperature === 'warm' ? 1.1 : 1.0;
       return freq * delay;
     });
@@ -256,12 +334,10 @@ export function generateSmartNumbers(frequencies: NumberFrequency[], count: numb
       const odds        = count - evens;
       const consecutive = sorted2.reduce((c, n, i) => i > 0 && n === sorted2[i - 1] + 1 ? c + 1 : c, 0);
 
-      // Balanceamento por quadrante (distribuição geográfica dos números)
       const quadrants = [0, 0, 0, 0];
       sorted2.forEach(n => { quadrants[Math.min(3, Math.floor((n - 1) / rangeSize))]++; });
       const quadBalance = 1 - (Math.max(...quadrants) - Math.min(...quadrants)) / Math.max(count, 1);
 
-      // Score composto
       const sumScore  = 1 - Math.min(Math.abs(sum - targetSum) / (tolerance || 1), 1);
       const parScore  = 1 - Math.abs(evens - odds) / count;
       const consScore = consecutive === 0 ? 0.9 : consecutive <= 2 ? 1.0 : consecutive <= 3 ? 0.7 : 0.4;
@@ -275,4 +351,37 @@ export function generateSmartNumbers(frequencies: NumberFrequency[], count: numb
   }
 
   return pickRandom(all, count).sort((a, b) => a - b);
+}
+
+export interface PairCoOccurrence {
+  pair: [number, number];
+  count: number;
+  percentage: number;
+}
+
+export function computeTopPairs(draws: number[][], topN: number = 20): PairCoOccurrence[] {
+  const pairCount: Record<string, number> = {};
+  const totalDraws = draws.length;
+
+  for (const draw of draws) {
+    const sorted = [...draw].sort((a, b) => a - b);
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const key = `${sorted[i]}-${sorted[j]}`;
+        pairCount[key] = (pairCount[key] || 0) + 1;
+      }
+    }
+  }
+
+  return Object.entries(pairCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([key, count]) => {
+      const [a, b] = key.split('-').map(Number);
+      return {
+        pair: [a, b] as [number, number],
+        count,
+        percentage: Math.round((count / Math.max(totalDraws, 1)) * 100),
+      };
+    });
 }

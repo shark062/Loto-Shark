@@ -8,7 +8,7 @@ import predictionRouter from "./routes/prediction";
 import chatRouter from "./routes/chat";
 import { logger } from "./lib/logger";
 import { initDefaultProviders, listProviders } from "./lib/aiProviders";
-import { LOTTERIES, fetchHistoricalDraws, computeFrequencies } from "./lib/lotteryData";
+import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, getHistoryConfig } from "./lib/lotteryData";
 import { runEnsemble } from "./lib/aiEnsemble";
 import type { LotteryContext } from "./lib/aiEnsemble";
 
@@ -39,9 +39,6 @@ app.use("/api/chat",         chatRouter);
 // ── Meta-reasoning routes (alias for AIMetrics page) ─────────
 function buildCtx(lotteryId: string, lottery: any, draws: number[][]): LotteryContext {
   const freqs = computeFrequencies(lottery.totalNumbers, draws);
-  const sorted = [...freqs].sort((a, b) => b.frequency - a.frequency);
-  const hotCut  = Math.floor(sorted.length * 0.25);
-  const coldCut = Math.floor(sorted.length * 0.75);
   const frequencyMap: Record<number, number> = {};
   for (const f of freqs) frequencyMap[f.number] = f.frequency;
   const avgSum = draws.length > 0
@@ -54,9 +51,9 @@ function buildCtx(lotteryId: string, lottery: any, draws: number[][]): LotteryCo
     lotteryId, lotteryName: lottery.displayName,
     totalNumbers: lottery.totalNumbers, minNumbers: lottery.minNumbers,
     draws: draws.map((d, i) => ({ contestNumber: i + 1, numbers: d })),
-    hotNumbers: sorted.slice(0, hotCut).map(f => f.number),
-    coldNumbers: sorted.slice(coldCut).map(f => f.number),
-    warmNumbers: sorted.slice(hotCut, coldCut).map(f => f.number),
+    hotNumbers: freqs.filter(f => f.temperature === 'hot').map(f => f.number),
+    coldNumbers: freqs.filter(f => f.temperature === 'cold').map(f => f.number),
+    warmNumbers: freqs.filter(f => f.temperature === 'warm').map(f => f.number),
     frequencyMap, avgSum, avgEvens,
   };
 }
@@ -66,7 +63,8 @@ app.get("/api/meta-reasoning/analyze/:lotteryId", async (req: Request, res: Resp
   const lottery = LOTTERIES.find(l => l.id === lotteryId);
   if (!lottery) return res.status(404).json({ message: "Loteria não encontrada" });
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const { optimal } = getHistoryConfig(lotteryId);
+    const draws = await fetchHistoricalDraws(lotteryId, optimal).catch(() => [] as number[][]);
     const ctx = buildCtx(lotteryId, lottery, draws);
     const { providers: pList } = listProviders();
     res.json({
@@ -88,7 +86,8 @@ app.get("/api/meta-reasoning/optimal-combination/:lotteryId", async (req: Reques
   const lottery = LOTTERIES.find(l => l.id === lotteryId);
   if (!lottery) return res.status(404).json({ message: "Loteria não encontrada" });
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const { optimal } = getHistoryConfig(lotteryId);
+    const draws = await fetchHistoricalDraws(lotteryId, optimal).catch(() => [] as number[][]);
     const ctx = buildCtx(lotteryId, lottery, draws);
     const { stats } = listProviders();
     if (stats.active === 0) {

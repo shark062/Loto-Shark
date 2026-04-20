@@ -1,48 +1,31 @@
 import { Router } from "express";
-import { runEnsemble, callWithFallback } from "../lib/aiEnsemble";
+import { runEnsemble, callWithFallback, buildSharkAnalysisContext } from "../lib/aiEnsemble";
 import { listProviders } from "../lib/aiProviders";
-import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, generateSmartNumbers } from "../lib/lotteryData";
-import type { LotteryContext, DrawData } from "../lib/aiEnsemble";
+import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, generateSmartNumbers, getHistoryConfig, computeTopPairs } from "../lib/lotteryData";
+import type { LotteryContext, DrawData, SharkAnalysisContext } from "../lib/aiEnsemble";
 
 const router = Router();
 
-function buildContext(lotteryId: string, lottery: any, draws: number[][]): LotteryContext {
+function buildContext(lotteryId: string, lottery: any, draws: number[][]): SharkAnalysisContext {
   const freqs = computeFrequencies(lottery.totalNumbers, draws);
-  const sorted = [...freqs].sort((a, b) => b.frequency - a.frequency);
-
-  const hotCut  = Math.floor(sorted.length * 0.25);
-  const coldCut = Math.floor(sorted.length * 0.75);
-
-  const hotNumbers  = sorted.slice(0, hotCut).map(f => f.number);
-  const coldNumbers = sorted.slice(coldCut).map(f => f.number);
-  const warmNumbers = sorted.slice(hotCut, coldCut).map(f => f.number);
-
+  const hotNumbers  = freqs.filter(f => f.temperature === 'hot').map(f => f.number);
+  const coldNumbers = freqs.filter(f => f.temperature === 'cold').map(f => f.number);
+  const warmNumbers = freqs.filter(f => f.temperature === 'warm').map(f => f.number);
   const frequencyMap: Record<number, number> = {};
   for (const f of freqs) frequencyMap[f.number] = f.frequency;
-
   const avgSum = draws.length > 0
     ? draws.reduce((s, d) => s + d.reduce((a, b) => a + b, 0), 0) / draws.length
     : (lottery.totalNumbers + 1) * lottery.minNumbers / 2;
-
   const avgEvens = draws.length > 0
     ? draws.reduce((s, d) => s + d.filter((n: number) => n % 2 === 0).length, 0) / draws.length
     : lottery.minNumbers / 2;
-
-  const drawData: DrawData[] = draws.map((d, i) => ({ contestNumber: i + 1, numbers: d }));
-
-  return {
-    lotteryId,
-    lotteryName: lottery.displayName,
-    totalNumbers: lottery.totalNumbers,
-    minNumbers: lottery.minNumbers,
-    draws: drawData,
-    hotNumbers,
-    coldNumbers,
-    warmNumbers,
-    frequencyMap,
-    avgSum,
-    avgEvens,
+  const base = {
+    lotteryId, lotteryName: lottery.displayName,
+    totalNumbers: lottery.totalNumbers, minNumbers: lottery.minNumbers,
+    draws: draws.map((d, i) => ({ contestNumber: i + 1, numbers: d })),
+    hotNumbers, coldNumbers, warmNumbers, frequencyMap, avgSum, avgEvens,
   };
+  return buildSharkAnalysisContext(base, draws);
 }
 
 // GET /api/prediction/generate/:lotteryId — Full ensemble prediction
@@ -52,25 +35,32 @@ router.get("/generate/:lotteryId", async (req, res) => {
   if (!lottery) return res.status(404).json({ message: "Loteria não encontrada" });
 
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const { optimal } = getHistoryConfig(lotteryId);
+    const draws = await fetchHistoricalDraws(lotteryId, optimal).catch(() => [] as number[][]);
     const ctx = buildContext(lotteryId, lottery, draws);
     const { stats } = listProviders();
 
     if (stats.active === 0) {
-      // Statistical fallback
       const freqs = computeFrequencies(lottery.totalNumbers, draws);
-      const primary = generateSmartNumbers(freqs, lottery.minNumbers, "mixed", lottery.totalNumbers);
+      const sc = ctx as SharkAnalysisContext;
+      const primary = generateSmartNumbers(freqs, lottery.minNumbers, 'mixed', lottery.totalNumbers);
+      const alternatives = [
+        { numbers: generateSmartNumbers(freqs, lottery.minNumbers, 'hot', lottery.totalNumbers), source: 'Quentes', confidence: 0.60 },
+        { numbers: generateSmartNumbers(freqs, lottery.minNumbers, 'cold', lottery.totalNumbers), source: 'Atrasados', confidence: 0.55 },
+      ];
       return res.json({
         lotteryId,
         lotteryName: lottery.displayName,
         primaryPrediction: primary,
-        confidence: 0.55,
-        reasoning: `Previsão estatística baseada em ${draws.length} sorteios reais (IAs indisponíveis).`,
-        alternatives: [],
+        confidence: 0.60,
+        reasoning: `Previsão estatística: ${sc.hotNumbers.length} quentes, ${sc.coldNumbers.length} frios, ${sc.overdueNumbers.length} atrasados identificados em ${draws.length} sorteios (IAs indisponíveis).`,
+        alternatives,
         ensemble: null,
         drawsAnalyzed: draws.length,
-        hotNumbers: ctx.hotNumbers.slice(0, 5),
-        coldNumbers: ctx.coldNumbers.slice(0, 5),
+        hotNumbers: sc.hotNumbers.slice(0, 8),
+        coldNumbers: sc.coldNumbers.slice(0, 8),
+        overdueNumbers: sc.overdueNumbers.slice(0, 5),
+        topPairs: sc.topPairs.slice(0, 5),
       });
     }
 
@@ -114,7 +104,8 @@ router.post("/ensemble", async (req, res) => {
   if (!lottery) return res.status(404).json({ message: "Loteria não encontrada" });
 
   try {
-    const draws = await fetchHistoricalDraws(lotteryId, 20).catch(() => [] as number[][]);
+    const { optimal } = getHistoryConfig(lotteryId);
+    const draws = await fetchHistoricalDraws(lotteryId, optimal).catch(() => [] as number[][]);
     const ctx = buildContext(lotteryId, lottery, draws);
     const { stats } = listProviders();
 
@@ -130,7 +121,6 @@ router.post("/ensemble", async (req, res) => {
 
     const ensemble = await runEnsemble(ctx);
 
-    // Combine consensus + alternatives
     const games = [
       { numbers: ensemble.consensusNumbers, source: "Consenso Ensemble", confidence: ensemble.overallConfidence },
       ...ensemble.alternativeGames,

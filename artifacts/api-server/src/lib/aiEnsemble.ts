@@ -31,6 +31,15 @@ export interface LotteryContext {
   avgEvens: number;
 }
 
+export interface SharkAnalysisContext extends LotteryContext {
+  delayMap: Record<number, number>;
+  topPairs: Array<{ pair: [number, number]; count: number; percentage: number }>;
+  overdueNumbers: number[];
+  topFrequencyList: string;
+  avgDelay: number;
+  modalityProfile: string;
+}
+
 export interface ProviderResult {
   providerId: string;
   providerName: string;
@@ -56,166 +65,210 @@ export interface EnsembleResult {
   latencyMs: number;
 }
 
+// ─── buildSharkAnalysisContext ────────────────────────────────────────────────
+
+export function buildSharkAnalysisContext(
+  base: LotteryContext,
+  draws: number[][],
+): SharkAnalysisContext {
+  // Calcula delay de cada número
+  const delayMap: Record<number, number> = {};
+  for (let n = 1; n <= base.totalNumbers; n++) {
+    const idx = draws.findIndex(d => d.includes(n));
+    delayMap[n] = idx === -1 ? draws.length : idx;
+  }
+
+  // Top 10 atrasados
+  const overdueNumbers = Object.entries(delayMap)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 10)
+    .map(([n]) => parseInt(n));
+
+  // Lista formatada das 15 maiores frequências com atraso
+  const topFrequencyList = Object.entries(base.frequencyMap)
+    .map(([n, f]) => ({ n: parseInt(n), f: f as number, d: delayMap[parseInt(n)] || 0 }))
+    .sort((a, b) => b.f - a.f)
+    .slice(0, 15)
+    .map(e => `${e.n}(${e.f}x,atr:${e.d})`)
+    .join(', ');
+
+  // Atraso médio
+  const allDelays = Object.values(delayMap);
+  const avgDelay = allDelays.length > 0
+    ? parseFloat((allDelays.reduce((a, b) => a + b, 0) / allDelays.length).toFixed(1))
+    : 0;
+
+  // Co-ocorrência de pares (top 10)
+  const pairCounts: Record<string, number> = {};
+  for (const draw of draws.slice(0, 50)) {
+    const s = [...draw].sort((a, b) => a - b);
+    for (let i = 0; i < s.length; i++)
+      for (let j = i + 1; j < s.length; j++) {
+        const k = `${s[i]}-${s[j]}`;
+        pairCounts[k] = (pairCounts[k] || 0) + 1;
+      }
+  }
+  const topPairs = Object.entries(pairCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([key, count]) => {
+      const [a, b] = key.split('-').map(Number);
+      return { pair: [a, b] as [number, number], count, percentage: Math.round(count / Math.max(draws.length, 1) * 100) };
+    });
+
+  const modalityProfile = `${base.lotteryName}: escolher ${base.minNumbers} de ${base.totalNumbers} | soma média: ${base.avgSum.toFixed(0)} | pares médios: ${base.avgEvens.toFixed(1)} | ${draws.length} sorteios analisados`;
+
+  return {
+    ...base,
+    delayMap,
+    topPairs,
+    overdueNumbers,
+    topFrequencyList,
+    avgDelay,
+    modalityProfile,
+  };
+}
+
 // ─── System prompts per role ──────────────────────────────────────────────────
 
 const ROLE_PROMPTS: Record<ProviderRole, (ctx: LotteryContext) => string> = {
-  frequency_analyst: (ctx) => `Você é um ANALISTA DE FREQUÊNCIA especializado em loterias brasileiras.
+  frequency_analyst: (ctx) => {
+    const sc = ctx as any; // pode ser SharkAnalysisContext
+    const topFreq = sc.topFrequencyList ||
+      Object.entries(ctx.frequencyMap).sort((a,b) => (b[1] as number)-(a[1] as number))
+        .slice(0,15).map(([n,f]) => `${n}(${f}x)`).join(', ');
+    return `Você é um ANALISTA DE FREQUÊNCIA especializado em loterias brasileiras.
 Analise os dados de frequência dos últimos ${ctx.draws.length} sorteios da ${ctx.lotteryName}.
 
-DADOS DE FREQUÊNCIA:
-- Números QUENTES (mais frequentes): ${ctx.hotNumbers.join(", ")}
-- Números MORNOS: ${ctx.warmNumbers.join(", ")}
-- Números FRIOS (menos frequentes): ${ctx.coldNumbers.join(", ")}
-- Mapa completo: ${JSON.stringify(ctx.frequencyMap)}
+FREQUÊNCIAS REAIS [número(saídas, atraso_atual)]: ${topFreq}
+Números QUENTES (alta freq recente): ${ctx.hotNumbers.slice(0,12).join(', ')}
+Números FRIOS (baixa freq recente): ${ctx.coldNumbers.slice(0,12).join(', ')}
+Mais ATRASADOS: ${(sc.overdueNumbers || ctx.coldNumbers.slice(0,8)).slice(0,8).join(', ')}
+Últimos 3 sorteios: ${ctx.draws.slice(0,3).map(d=>`[${d.numbers.join(',')}]`).join(' | ')}
 
-Últimos 5 sorteios: ${ctx.draws.slice(0, 5).map(d => `[${d.numbers.join(",")}]`).join(", ")}
-
-Sua tarefa: identifique os ${ctx.minNumbers} números com maior potencial baseado em frequência histórica.
-Use a teoria de "retorno à média" — números frios tendem a aparecer, quentes tendem a pausar.
+Tarefa: selecione os ${ctx.minNumbers} números com maior potencial para o próximo sorteio.
+Misture quentes (momentum) com atrasados de alta frequência global (compensação).
 
 Responda APENAS JSON válido sem markdown:
-{
-  "suggestedNumbers": [lista de ${ctx.minNumbers} números de 1 a ${ctx.totalNumbers}],
-  "confidence": 0.XX,
-  "reasoning": "explicação curta",
-  "hotBalance": "percentual de quentes escolhidos",
-  "coldBalance": "percentual de frios escolhidos"
-}`,
+{"suggestedNumbers":[exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],"confidence":0.XX,"reasoning":"baseado nos dados reais","hotCount":N,"coldCount":N}`;
+  },
 
-  statistical_predictor: (ctx) => `Você é um PREDITOR ESTATÍSTICO de loterias brasileiras.
+  statistical_predictor: (ctx) => {
+    const sc = ctx as any;
+    return `Você é um PREDITOR ESTATÍSTICO de loterias brasileiras.
 Use probabilidade Bayesiana e análise de frequência para prever os próximos números da ${ctx.lotteryName}.
 
-DADOS ESTATÍSTICOS:
-- Total de números possíveis: 1 a ${ctx.totalNumbers}
-- Números a escolher: ${ctx.minNumbers}
-- Sorteios analisados: ${ctx.draws.length}
-- Soma média dos sorteios: ${ctx.avgSum.toFixed(1)}
-- Média de pares por sorteio: ${ctx.avgEvens.toFixed(1)}
-- Quentes: ${ctx.hotNumbers.slice(0, 10).join(", ")}
-- Frios: ${ctx.coldNumbers.slice(0, 10).join(", ")}
+PERFIL: ${sc.modalityProfile || `${ctx.lotteryName}: ${ctx.minNumbers} de ${ctx.totalNumbers}, ${ctx.draws.length} sorteios`}
+Soma média histórica: ${ctx.avgSum.toFixed(1)} | Pares médios: ${ctx.avgEvens.toFixed(1)}
+Quentes: ${ctx.hotNumbers.slice(0,10).join(', ')}
+Frios: ${ctx.coldNumbers.slice(0,10).join(', ')}
+Atraso médio do universo: ${sc.avgDelay || '?'} sorteios
+Histórico recente: ${ctx.draws.slice(0,5).map(d=>`[${d.numbers.join(',')}]`).join(' | ')}
 
-Histórico recente: ${ctx.draws.slice(0, 8).map(d => `Concurso ${d.contestNumber}: [${d.numbers.join(",")}]`).join(" | ")}
-
-Calcule a previsão mais provável usando:
-1. Frequência ponderada por recência (sorteios mais recentes têm peso maior)
-2. Equilíbrio par/ímpar próximo da média histórica (${ctx.avgEvens.toFixed(0)} pares)
-3. Soma total próxima da média histórica (${ctx.avgSum.toFixed(0)})
-4. Evitar mais de 3 números consecutivos
+Calcule com:
+1. Frequência ponderada por recência
+2. Equilíbrio par/ímpar próximo de ${ctx.avgEvens.toFixed(0)} pares
+3. Soma próxima de ${ctx.avgSum.toFixed(0)} (±12%)
+4. Máximo 3 consecutivos
 
 Responda APENAS JSON válido:
-{
-  "suggestedNumbers": [lista de exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],
-  "confidence": 0.XX,
-  "reasoning": "raciocínio estatístico",
-  "expectedSum": numero,
-  "evenOddBalance": "X pares / Y ímpares"
-}`,
+{"suggestedNumbers":[exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],"confidence":0.XX,"reasoning":"raciocínio estatístico","expectedSum":N,"evenOddBalance":"X pares / Y ímpares"}`;
+  },
 
-  mathematical_analyzer: (ctx) => `Você é um ANALISADOR MATEMÁTICO de padrões em loterias brasileiras.
-Foque em padrões matemáticos: somas, paridade, consecutividade, distribuição por dezenas.
+  mathematical_analyzer: (ctx) => {
+    const sc = ctx as any;
+    const recentStats = ctx.draws.slice(0,8).map(d => {
+      const nums = d.numbers;
+      const sum  = nums.reduce((a:number,b:number)=>a+b,0);
+      const evens = nums.filter((n:number)=>n%2===0).length;
+      const sorted = [...nums].sort((a:number,b:number)=>a-b);
+      const consec = sorted.reduce((c:number,n:number,i:number,arr:number[])=>i>0&&n===arr[i-1]+1?c+1:c,0);
+      return `[${nums.join(',')}] S=${sum} P=${evens} C=${consec}`;
+    }).join('\n');
+    return `Você é um ANALISADOR MATEMÁTICO de padrões em loterias brasileiras.
+Foque em somas, paridade, consecutividade e distribuição por quadrantes da ${ctx.lotteryName}.
 
-${ctx.lotteryName} — últimos ${ctx.draws.length} sorteios:
-${ctx.draws.slice(0, 10).map(d => {
-  const sum = d.numbers.reduce((a, b) => a + b, 0);
-  const evens = d.numbers.filter(n => n % 2 === 0).length;
-  const consec = d.numbers.sort((a,b)=>a-b).reduce((c,n,i,arr) => i>0 && n===arr[i-1]+1 ? c+1 : c, 0);
-  return `[${d.numbers.join(",")}] soma=${sum} pares=${evens} consec=${consec}`;
-}).join("\n")}
+Últimos 8 sorteios (S=soma, P=pares, C=consecutivos):
+${recentStats}
 
-Média de soma: ${ctx.avgSum.toFixed(1)}
-Números possíveis: 1 a ${ctx.totalNumbers}, escolher ${ctx.minNumbers}
+Universo: 1 a ${ctx.totalNumbers} | Escolher: ${ctx.minNumbers}
+Soma média: ${ctx.avgSum.toFixed(1)} | Pares médios: ${ctx.avgEvens.toFixed(1)}
+Pares mais frequentes juntos: ${sc.topPairs ? sc.topPairs.slice(0,5).map((p:any)=>`(${p.pair[0]},${p.pair[1]}):${p.count}x`).join(' ') : 'N/D'}
 
-Analise:
-1. Padrão de soma ideal para o próximo sorteio
-2. Equilíbrio par/ímpar mais provável
-3. Distribuição por faixas (baixo/médio/alto)
-4. Números com padrão matemático favorável
+Analise o padrão matemático mais provável e distribua pelos 4 quadrantes de ${Math.ceil(ctx.totalNumbers/4)} números cada.
 
 Responda APENAS JSON válido:
-{
-  "suggestedNumbers": [lista de exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],
-  "confidence": 0.XX,
-  "reasoning": "padrões matemáticos identificados",
-  "targetSum": numero,
-  "distribution": "X baixos / Y médios / Z altos"
-}`,
+{"suggestedNumbers":[exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],"confidence":0.XX,"reasoning":"padrões matemáticos","targetSum":N,"distribution":"X baixos / Y médios / Z altos"}`;
+  },
 
-  pattern_recognizer: (ctx) => `Você é um RECONHECEDOR DE PADRÕES em sequências de loterias brasileiras.
-Identifique padrões recorrentes, ciclos, e tendências nos dados da ${ctx.lotteryName}.
+  pattern_recognizer: (ctx) => {
+    const sc = ctx as any;
+    const neverAppeared = Array.from({length: ctx.totalNumbers}, (_,i)=>i+1)
+      .filter(n => !ctx.frequencyMap[n] || (ctx.frequencyMap[n] as number) === 0);
+    return `Você é um RECONHECEDOR DE PADRÕES em sequências de loterias brasileiras.
+Identifique padrões recorrentes, ciclos e tendências na ${ctx.lotteryName}.
 
-Sequência histórica completa (${ctx.draws.length} sorteios mais recentes):
-${ctx.draws.map((d, i) => `#${i+1} [${d.numbers.sort((a,b)=>a-b).join(",")}]`).join("\n")}
+Sequência dos ${ctx.draws.length} sorteios mais recentes:
+${ctx.draws.slice(0,15).map((d,i)=>`#${i+1} [${[...d.numbers].sort((a:number,b:number)=>a-b).join(',')}]`).join('\n')}
 
-Números que NUNCA apareceram nos últimos ${ctx.draws.length} sorteios: ${
-  Array.from({length: ctx.totalNumbers}, (_, i) => i+1)
-    .filter(n => !Object.keys(ctx.frequencyMap).some(k => parseInt(k) === n && ctx.frequencyMap[parseInt(k)] > 0))
-    .join(", ") || "nenhum"
-}
+Nunca apareceram nos últimos ${ctx.draws.length} sorteios: ${neverAppeared.join(', ') || 'nenhum'}
+Mais atrasados: ${(sc.overdueNumbers || ctx.coldNumbers.slice(0,8)).join(', ')}
+Pares com maior co-ocorrência: ${sc.topPairs ? sc.topPairs.slice(0,5).map((p:any)=>`(${p.pair[0]},${p.pair[1]}):${p.count}x`).join(' ') : 'N/D'}
 
-Analise padrões como:
-1. Números que aparecem juntos frequentemente (co-ocorrência)
+Identifique:
+1. Co-ocorrências (números que saem juntos)
 2. Ciclos de ausência e retorno
-3. Números que saíram nos últimos 3 sorteios vs que não saíram há mais de 5
-4. Padrões posicionais
+3. Números quentes dos últimos 3 sorteios vs ausentes há >5 sorteios
 
 Responda APENAS JSON válido:
-{
-  "suggestedNumbers": [lista de exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],
-  "confidence": 0.XX,
-  "reasoning": "padrões detectados",
-  "keyPattern": "principal padrão identificado",
-  "overduNumbers": [números mais atrasados]
-}`,
+{"suggestedNumbers":[exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],"confidence":0.XX,"reasoning":"padrões detectados","keyPattern":"principal padrão","overdueNumbers":[números mais atrasados incluídos]}`;
+  },
 
-  strategy_advisor: (ctx) => `Você é um CONSELHEIRO ESTRATÉGICO de loterias brasileiras.
-Combine análise técnica com visão estratégica para recomendar os melhores números da ${ctx.lotteryName}.
+  strategy_advisor: (ctx) => {
+    const sc = ctx as any;
+    return `Você é um CONSELHEIRO ESTRATÉGICO de loterias brasileiras.
+Combine análise técnica com visão estratégica para ${ctx.lotteryName}.
 
 CONTEXTO COMPLETO:
-- Loteria: ${ctx.lotteryName} (escolher ${ctx.minNumbers} de ${ctx.totalNumbers})
-- Análise de ${ctx.draws.length} sorteios históricos reais da Caixa Econômica Federal
-- Quentes: ${ctx.hotNumbers.join(", ")}
-- Frios: ${ctx.coldNumbers.join(", ")}
+- ${sc.modalityProfile || `${ctx.lotteryName}: ${ctx.minNumbers} de ${ctx.totalNumbers}`}
+- Quentes: ${ctx.hotNumbers.slice(0,10).join(', ')}
+- Frios/Atrasados: ${ctx.coldNumbers.slice(0,10).join(', ')}
+- Soma alvo: ${ctx.avgSum.toFixed(0)} (±15%)
+- Pares alvo: ${ctx.avgEvens.toFixed(0)}
+- Top pares co-ocorrentes: ${sc.topPairs ? sc.topPairs.slice(0,5).map((p:any)=>`(${p.pair[0]},${p.pair[1]})`).join(' ') : 'N/D'}
+
+Estratégia ideal para maximizar acertos:
+1. 40-50% quentes (momentum), 25-30% atrasados de alta frequência global, resto mornos
+2. Inclua ao menos 1 par co-ocorrente de alto índice
+3. Distribua pelos quadrantes do universo de números
+4. Soma e paridade próximas à média histórica
+
+Responda APENAS JSON válido:
+{"suggestedNumbers":[exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],"confidence":0.XX,"reasoning":"raciocínio estratégico completo","strategy":"nome da estratégia","riskLevel":"baixo|médio|alto"}`;
+  },
+
+  ensemble_judge: (ctx) => {
+    const sc = ctx as any;
+    return `Você é o JUIZ DO ENSEMBLE para ${ctx.lotteryName}.
+Você receberá sugestões de múltiplas IAs especializadas e construirá o consenso final.
+
+DADOS ESTATÍSTICOS BASE:
+- ${sc.modalityProfile || `${ctx.lotteryName}: ${ctx.minNumbers} de ${ctx.totalNumbers}`}
+- Quentes: ${ctx.hotNumbers.slice(0,10).join(', ')}
+- Atrasados prioritários: ${(sc.overdueNumbers || ctx.coldNumbers.slice(0,5)).join(', ')}
 - Soma média histórica: ${ctx.avgSum.toFixed(1)}
-- Paridade média: ${ctx.avgEvens.toFixed(1)} pares por sorteio
+- Pares médios: ${ctx.avgEvens.toFixed(1)}
+- Frequências reais: ${sc.topFrequencyList || ''}
 
-Histórico recente: ${ctx.draws.slice(0,5).map(d=>`[${d.numbers.join(",")}]`).join(", ")}
-
-Como conselheiro estratégico:
-1. Equilibre teoria da frequência com teoria da aleatoriedade
-2. Considere viés de representação (distribuição uniforme pelo range)
-3. Aplique estratégia de diversificação de risco
-4. Recomende números com melhor relação risco/retorno estatístico
-
-Responda APENAS JSON válido:
-{
-  "suggestedNumbers": [lista de exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],
-  "confidence": 0.XX,
-  "reasoning": "raciocínio estratégico completo",
-  "strategy": "nome da estratégia",
-  "riskLevel": "baixo|médio|alto"
-}`,
-
-  ensemble_judge: (ctx) => `Você é o JUIZ DO ENSEMBLE, responsável por construir o consenso final.
-Você recebe as sugestões de múltiplas IAs especializadas e cria a melhor previsão possível.
-
-LOTERIA: ${ctx.lotteryName} — escolher ${ctx.minNumbers} números de 1 a ${ctx.totalNumbers}
-
-Dados estatísticos base:
-- Quentes: ${ctx.hotNumbers.join(", ")}
-- Frios: ${ctx.coldNumbers.join(", ")}
-- Soma média: ${ctx.avgSum.toFixed(1)}
-
-Combine as informações disponíveis para gerar a previsão de consenso final, priorizando:
-1. Números sugeridos por múltiplas fontes
-2. Equilíbrio matemático (soma, paridade)
-3. Mix de quentes e frios
+Para o consenso final, priorize números que:
+1. Aparecem em 3+ sugestões das IAs
+2. São quentes OU têm atraso alto com frequência global acima da média
+3. Resultam em soma próxima de ${ctx.avgSum.toFixed(0)} (±15%)
+4. Equilibram pares/ímpares próximo de ${ctx.avgEvens.toFixed(0)} pares
 
 Responda APENAS JSON válido:
-{
-  "suggestedNumbers": [lista de exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],
-  "confidence": 0.XX,
-  "reasoning": "síntese do consenso"
-}`,
+{"suggestedNumbers":[exatamente ${ctx.minNumbers} números distintos de 1 a ${ctx.totalNumbers}],"confidence":0.XX,"reasoning":"consenso das IAs com critérios estatísticos","consensusStrength":"forte|médio|fraco"}`;
+  },
 };
 
 // ─── Role assignment per provider type ───────────────────────────────────────
@@ -235,7 +288,11 @@ const PROVIDER_ROLES: Record<string, ProviderRole> = {
 
 // ─── HTTP call per provider type ─────────────────────────────────────────────
 
-async function callProvider(provider: ProviderConfig, prompt: string): Promise<{ text: string; latencyMs: number }> {
+async function callProvider(
+  provider: ProviderConfig,
+  prompt: string,
+  systemPrompt?: string,
+): Promise<{ text: string; latencyMs: number }> {
   const start = Date.now();
   let response: Response;
 
@@ -249,13 +306,14 @@ async function callProvider(provider: ProviderConfig, prompt: string): Promise<{
       },
       body: JSON.stringify({
         model: provider.model,
-        max_tokens: 800,
+        max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
+        ...(systemPrompt ? { system: systemPrompt } : {}),
       }),
       signal: AbortSignal.timeout(25000),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text().catch(() => "")}`);
-    const data = await response.json();
+    const data = await response.json() as any;
     return { text: data.content?.[0]?.text || "", latencyMs: Date.now() - start };
   }
 
@@ -268,14 +326,17 @@ async function callProvider(provider: ProviderConfig, prompt: string): Promise<{
     },
     body: JSON.stringify({
       model: provider.model,
-      max_tokens: 800,
+      max_tokens: 2000,
       temperature: 0.3,
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
+        { role: "user" as const, content: prompt },
+      ],
     }),
     signal: AbortSignal.timeout(25000),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text().catch(() => "")}`);
-  const data = await response.json();
+  const data = await response.json() as any;
   return { text: data.choices?.[0]?.message?.content || "", latencyMs: Date.now() - start };
 }
 
@@ -327,13 +388,16 @@ function parseReasoning(text: string): string {
 
 // ─── Core ensemble function ───────────────────────────────────────────────────
 
-export async function runEnsemble(ctx: LotteryContext): Promise<EnsembleResult> {
+export async function runEnsemble(ctx: LotteryContext | SharkAnalysisContext): Promise<EnsembleResult> {
   const ensembleStart = Date.now();
   const allProviders = [...providers.values()].filter(p => p.enabled);
 
   if (allProviders.length === 0) {
     throw new Error("Nenhum provider de IA configurado");
   }
+
+  // Passa o contexto enriquecido para os prompts (cast é seguro — SharkAnalysisContext extends LotteryContext)
+  const enrichedCtx = ctx as SharkAnalysisContext;
 
   // Assign roles — each type gets its specialized role
   const assignments = allProviders.map(p => ({
@@ -343,7 +407,7 @@ export async function runEnsemble(ctx: LotteryContext): Promise<EnsembleResult> 
 
   // Run all providers in parallel
   const tasks = assignments.map(async ({ provider, role }): Promise<ProviderResult> => {
-    const prompt = ROLE_PROMPTS[role](ctx);
+    const prompt = ROLE_PROMPTS[role](enrichedCtx);
     const start = Date.now();
     try {
       const { text, latencyMs } = await callProvider(provider, prompt);
@@ -400,13 +464,11 @@ export async function runEnsemble(ctx: LotteryContext): Promise<EnsembleResult> 
   // ── Weighted consensus ──────────────────────────────────────────────────────
   const successfulResults = results.filter(r => r.success && r.suggestedNumbers.length >= ctx.minNumbers);
 
-  // Score each number: sum of (provider_weight * provider_confidence) across all providers that suggested it
   const numberScores: Record<number, number> = {};
   for (let n = 1; n <= ctx.totalNumbers; n++) numberScores[n] = 0;
 
   for (const result of successfulResults) {
     const provider = providers.get(result.providerId);
-    // Weight: performance-based + role importance
     const roleWeight: Record<ProviderRole, number> = {
       ensemble_judge:        1.8,
       strategy_advisor:      1.5,
@@ -423,7 +485,6 @@ export async function runEnsemble(ctx: LotteryContext): Promise<EnsembleResult> 
     }
   }
 
-  // Sort by score and pick top-N
   const ranked = Object.entries(numberScores)
     .sort((a, b) => Number(b[1]) - Number(a[1]))
     .map(([n, score]) => ({ number: parseInt(n), score: Number(score) }));
@@ -433,7 +494,6 @@ export async function runEnsemble(ctx: LotteryContext): Promise<EnsembleResult> 
     .map(r => r.number)
     .sort((a, b) => a - b);
 
-  // If not enough, fill with statistical fallback
   if (consensusNumbers.length < ctx.minNumbers) {
     const hot = ctx.hotNumbers.filter(n => !consensusNumbers.includes(n));
     while (consensusNumbers.length < ctx.minNumbers && hot.length > 0) {
@@ -446,7 +506,6 @@ export async function runEnsemble(ctx: LotteryContext): Promise<EnsembleResult> 
     ? successfulResults.reduce((s, r) => s + r.confidence, 0) / successfulResults.length
     : 0;
 
-  // Build alternative games — one per role
   const alternativeGames = successfulResults
     .slice(0, 5)
     .map(r => ({
@@ -483,7 +542,6 @@ export async function callWithFallback(
   const allProviders = [...providers.values()]
     .filter(p => p.enabled)
     .sort((a, b) => {
-      // Prefer matching role
       if (preferredRole) {
         const roleA = PROVIDER_ROLES[a.type] === preferredRole ? 1 : 0;
         const roleB = PROVIDER_ROLES[b.type] === preferredRole ? 1 : 0;
@@ -494,11 +552,7 @@ export async function callWithFallback(
 
   for (const provider of allProviders) {
     try {
-      let fullPrompt = prompt;
-      if (systemPrompt && provider.type !== "anthropic") {
-        fullPrompt = `${systemPrompt}\n\n${prompt}`;
-      }
-      const { text } = await callProvider(provider, fullPrompt);
+      const { text } = await callProvider(provider, prompt, systemPrompt);
       if (text) {
         provider.totalCalls++;
         provider.successCalls++;

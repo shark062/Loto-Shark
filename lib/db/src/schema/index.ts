@@ -45,3 +45,12 @@ export const aiProvidersTable = pgTable("ai_providers", {
 });
 
 export type AiProvider = typeof aiProvidersTable.$inferSelect;
+
+export const lotteryDrawsCache = pgTable('lottery_draws_cache', {
+  id: serial('id').primaryKey(),
+  lotteryId: text('lottery_id').notNull().unique(),
+  draws: jsonb('draws').notNull().$type<number[][]>(),
+  latestContest: integer('latest_contest').notNull().default(0),
+  fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
+  drawCount: integer('draw_count').notNull().default(0),
+});
