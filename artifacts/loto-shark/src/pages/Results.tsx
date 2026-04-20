@@ -182,7 +182,7 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
           <iframe
             className="w-full h-full"
             style={{ minHeight: 200 }}
-            src={`https://www.youtube.com/embed/live_stream?channel=${CANAL_CAIXA_CHANNEL_ID}&autoplay=1`}
+            src="https://www.youtube.com/embed/live_stream?channel=UC_unXshByY_Tf0XG_SgD8fA"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             title="Sorteio ao Vivo — Canal Caixa"
