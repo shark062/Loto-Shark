@@ -452,6 +452,16 @@ export default function Results() {
 
       const addBackground = () => {
         doc.addImage(imgBase64, 'PNG', 0, 0, pageWidth, pageHeight);
+        // Overlay escuro semitransparente para realçar as fontes brancas
+        const anyDoc = doc as any;
+        if (typeof anyDoc.setGState === 'function' && typeof anyDoc.GState === 'function') {
+          const gs = new anyDoc.GState({ opacity: 0.55 });
+          anyDoc.setGState(gs);
+          doc.setFillColor(0, 0, 0);
+          doc.rect(0, 0, pageWidth, pageHeight, 'F');
+          const gs2 = new anyDoc.GState({ opacity: 1 });
+          anyDoc.setGState(gs2);
+        }
       };
 
       const ensureSpace = (needed: number, currentY: number): number => {
