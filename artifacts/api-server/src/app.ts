@@ -107,6 +107,31 @@ app.post("/api/meta-reasoning/feedback", (req: Request, res: Response) => {
   res.json({ success: true, message: "Feedback registrado" });
 });
 
+// ── YouTube Live Stream Proxy ──────────────────────────────────
+app.get("/api/youtube/live", async (req: Request, res: Response) => {
+  try {
+    const response = await fetch("https://www.youtube.com/@canalcaixa/live", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+      },
+    });
+    const html = await response.text();
+    const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+    if (match?.[1]) {
+      const videoId = match[1];
+      res.json({
+        videoId,
+        embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`,
+      });
+    } else {
+      res.status(404).json({ message: "Nenhuma transmissão ao vivo encontrada" });
+    }
+  } catch (err: any) {
+    res.status(500).json({ message: "Erro ao buscar transmissão ao vivo", error: err.message });
+  }
+});
+
 // ── Init (async — carrega providers do banco antes de servir) ──
 (async () => {
   try {

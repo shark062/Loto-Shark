@@ -182,7 +182,7 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
           <iframe
             className="w-full h-full"
             style={{ minHeight: 200 }}
-            src="https://www.youtube.com/embed/live_stream?channel=UC_unXshByY_Tf0XG_SgD8fA&autoplay=1"
+            src={liveData?.embedUrl ?? "https://www.youtube.com/embed/live_stream?channel=UC_unXshByY_Tf0XG_SgD8fA&autoplay=1"}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             title="Sorteio ao Vivo — Canal Caixa"
@@ -348,6 +348,18 @@ export default function Results() {
   };
 
   const { data: lotteryTypes } = useLotteryTypes();
+
+  const { data: liveData } = useQuery<{ videoId: string; embedUrl: string }>({
+    queryKey: ["/api/youtube/live"],
+    queryFn: async () => {
+      const res = await fetch("/api/youtube/live");
+      if (!res.ok) throw new Error("live unavailable");
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: userStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/users/stats"],
