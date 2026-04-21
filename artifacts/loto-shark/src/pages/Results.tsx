@@ -74,6 +74,18 @@ function extractNumbersFromSpeech(text: string): number[] {
 
 function LiveSorteioCard({ userGames }: { userGames: any[] }) {
   const { data: lotteryTypes } = useLotteryTypes();
+
+  const { data: liveData } = useQuery<{ videoId: string; embedUrl: string }>({
+    queryKey: ["/api/youtube/live"],
+    queryFn: async () => {
+      const res = await fetch("/api/youtube/live");
+      if (!res.ok) throw new Error("live unavailable");
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
   const [selectedLotteryCheck, setSelectedLotteryCheck] = useState<string>("");
   const [checkResults, setCheckResults] = useState<{ game: any; matches: number[] }[]>([]);
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
@@ -348,18 +360,6 @@ export default function Results() {
   };
 
   const { data: lotteryTypes } = useLotteryTypes();
-
-  const { data: liveData } = useQuery<{ videoId: string; embedUrl: string }>({
-    queryKey: ["/api/youtube/live"],
-    queryFn: async () => {
-      const res = await fetch("/api/youtube/live");
-      if (!res.ok) throw new Error("live unavailable");
-      return res.json();
-    },
-    refetchInterval: 5 * 60 * 1000,
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-  });
 
   const { data: userStats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/users/stats"],
