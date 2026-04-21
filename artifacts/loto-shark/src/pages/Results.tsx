@@ -434,9 +434,13 @@ export default function Results() {
 
   const exportToPDF = async () => {
     try {
-      const doc = new jsPDF({ format: 'a4' });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      const doc = new jsPDF({ format: 'a4', unit: 'mm' });
+      const pageWidth = doc.internal.pageSize.getWidth();   // 210mm
+      const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+      const marginX = 12;
+      const marginTop = 12;
+      const marginBottom = 15;
+      const contentWidth = pageWidth - marginX * 2;
 
       const imgRes = await fetch('/folha-pdf.png');
       const imgBlob = await imgRes.blob();
@@ -450,55 +454,77 @@ export default function Results() {
         doc.addImage(imgBase64, 'PNG', 0, 0, pageWidth, pageHeight);
       };
 
-      addBackground();
-
-      doc.setFontSize(44);
-      doc.setTextColor(255, 255, 255);
-      doc.text("Shark Loterias - Relatório de Resultados", pageWidth / 2, 25, { align: "center" });
-
-      doc.setFontSize(20);
-      doc.setTextColor(230, 255, 230);
-      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pageWidth / 2, 42, { align: "center" });
-
-      doc.setFontSize(28);
-      doc.setTextColor(255, 255, 255);
-      doc.text("Resumo Geral", 20, 62);
-
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(0.3);
-      doc.line(20, 67, pageWidth - 20, 67);
-
-      doc.setFontSize(22);
-      doc.setTextColor(255, 255, 255);
-      doc.text(`Total de Jogos: ${userStats?.totalGames || 0}`, 20, 80);
-      doc.text(`Jogos Premiados: ${userStats?.wins || 0}`, 20, 94);
-      doc.text(`Total Acumulado: R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 108);
-
-      doc.line(20, 114, pageWidth - 20, 114);
-
-      let yPos = 130;
-      filteredGames.forEach((game: any, index: number) => {
-        if (yPos > pageHeight - 80) {
+      const ensureSpace = (needed: number, currentY: number): number => {
+        if (currentY + needed > pageHeight - marginBottom) {
           doc.addPage();
           addBackground();
-          yPos = 25;
+          return marginTop + 6;
         }
+        return currentY;
+      };
 
-        doc.setFontSize(22);
+      const writeWrapped = (text: string, x: number, y: number, maxW: number, lineH: number): number => {
+        const lines = doc.splitTextToSize(text, maxW) as string[];
+        for (const ln of lines) {
+          y = ensureSpace(lineH, y);
+          doc.text(ln, x, y);
+          y += lineH;
+        }
+        return y;
+      };
+
+      addBackground();
+
+      // Cabeçalho
+      doc.setFontSize(16);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Shark Loterias - Relatório de Resultados", pageWidth / 2, marginTop + 4, { align: "center", maxWidth: contentWidth });
+
+      doc.setFontSize(9);
+      doc.setTextColor(230, 255, 230);
+      doc.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pageWidth / 2, marginTop + 11, { align: "center" });
+
+      // Resumo
+      let yPos = marginTop + 22;
+      doc.setFontSize(13);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Resumo Geral", marginX, yPos);
+      yPos += 2;
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.3);
+      doc.line(marginX, yPos, pageWidth - marginX, yPos);
+      yPos += 6;
+
+      doc.setFontSize(10);
+      doc.text(`Total de Jogos: ${userStats?.totalGames || 0}`, marginX, yPos); yPos += 5;
+      doc.text(`Jogos Premiados: ${userStats?.wins || 0}`, marginX, yPos); yPos += 5;
+      doc.text(`Total Acumulado: R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, marginX, yPos); yPos += 4;
+
+      doc.setLineWidth(0.2);
+      doc.line(marginX, yPos, pageWidth - marginX, yPos);
+      yPos += 6;
+
+      // Lista de jogos
+      filteredGames.forEach((game: any, index: number) => {
+        // Bloco precisa de ~26mm
+        yPos = ensureSpace(26, yPos);
+
+        doc.setFontSize(11);
         doc.setTextColor(255, 255, 255);
-        doc.text(`${index + 1}. ${getLotteryName(game.lotteryId)} - Concurso #${game.contestNumber}`, 20, yPos);
+        const titulo = `${index + 1}. ${getLotteryName(game.lotteryId)} - Concurso #${game.contestNumber}`;
+        yPos = writeWrapped(titulo, marginX, yPos, contentWidth, 5);
 
-        doc.setFontSize(18);
+        doc.setFontSize(9);
         doc.setTextColor(230, 255, 230);
-        doc.text(`Números: ${game.selectedNumbers.join(", ")}`, 22, yPos + 14);
-        doc.text(`Acertos: ${game.matches} | Prêmio: R$ ${parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 22, yPos + 28);
-        doc.text(`Data: ${new Date(game.createdAt).toLocaleDateString('pt-BR')} | Estratégia: ${game.strategy}`, 22, yPos + 42);
+        yPos = writeWrapped(`Números: ${game.selectedNumbers.join(", ")}`, marginX + 2, yPos, contentWidth - 2, 4.5);
+        yPos = writeWrapped(`Acertos: ${game.matches} | Prêmio: R$ ${parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, marginX + 2, yPos, contentWidth - 2, 4.5);
+        yPos = writeWrapped(`Data: ${new Date(game.createdAt).toLocaleDateString('pt-BR')} | Estratégia: ${game.strategy}`, marginX + 2, yPos, contentWidth - 2, 4.5);
 
+        yPos += 1.5;
         doc.setDrawColor(255, 255, 255);
         doc.setLineWidth(0.1);
-        doc.line(20, yPos + 50, pageWidth - 20, yPos + 50);
-
-        yPos += 64;
+        doc.line(marginX, yPos, pageWidth - marginX, yPos);
+        yPos += 4;
       });
 
       doc.save("Shark_Loterias_Relatorio.pdf");
