@@ -87,89 +87,70 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
     staleTime: 5 * 60 * 1000,
   });
   const [selectedLotteryCheck, setSelectedLotteryCheck] = useState<string>("");
-  const [checkResults, setCheckResults] = useState<{ game: any; matches: number[] }[]>([]);
-  const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
-  const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [micError, setMicError] = useState('');
-  const recognitionRef = useRef<any>(null);
+  const [lotteryDraws, setLotteryDraws] = useState<{
+    lotteryId: string;
+    displayName: string;
+    contestNumber: number;
+    drawDate: string | null;
+    drawnNumbers: number[];
+    gameMatches: { game: any; matches: number[] }[];
+  }[]>([]);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState('');
 
-  const runCheck = useCallback((drawn: number[], games: any[]) => {
-    if (drawn.length === 0) { setCheckResults([]); return; }
-    const gamesToCheck = selectedLotteryCheck && selectedLotteryCheck !== "all"
-      ? games.filter(g => g.lotteryId === selectedLotteryCheck)
-      : games;
-    const results = gamesToCheck.map((game: any) => ({
-      game,
-      matches: (game.selectedNumbers as number[]).filter(n => drawn.includes(n)),
-    }));
-    results.sort((a, b) => b.matches.length - a.matches.length);
-    setCheckResults(results);
-  }, [selectedLotteryCheck]);
+  const fetchOfficialResults = useCallback(async () => {
+    setFetching(true);
+    setFetchError('');
+    try {
+      const targetIds: string[] = selectedLotteryCheck && selectedLotteryCheck !== "all"
+        ? [selectedLotteryCheck]
+        : Array.from(new Set(userGames.map(g => g.lotteryId)));
 
-  useEffect(() => {
-    runCheck(drawnNumbers, userGames);
-  }, [drawnNumbers, selectedLotteryCheck, userGames, runCheck]);
-
-  const startListening = useCallback(() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      setMicError('Reconhecimento de voz não suportado neste navegador. Use Chrome ou Samsung Internet.');
-      return;
-    }
-    setMicError('');
-    const recognition = new SR();
-    recognition.lang = 'pt-BR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: any) => {
-      let full = '';
-      for (let i = 0; i < event.results.length; i++) {
-        full += event.results[i][0].transcript + ' ';
+      if (targetIds.length === 0) {
+        setFetchError('Nenhum jogo salvo para conferir.');
+        setLotteryDraws([]);
+        return;
       }
-      setTranscript(full.trim());
-      const nums = extractNumbersFromSpeech(full);
-      setDrawnNumbers(nums);
-    };
-    recognition.onerror = (e: any) => {
-      if (e.error !== 'aborted') setMicError(`Erro: ${e.error}`);
-      setIsListening(false);
-    };
-    recognition.onend = () => setIsListening(false);
 
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, []);
+      const results = await Promise.all(
+        targetIds.map(async (id) => {
+          try {
+            const r = await fetch(`/api/lotteries/${id}/latest`);
+            if (!r.ok) return null;
+            const data = await r.json();
+            const drawn: number[] = data.drawnNumbers || [];
+            const games = userGames.filter(g => g.lotteryId === id);
+            const gameMatches = games
+              .map((game: any) => ({
+                game,
+                matches: (game.selectedNumbers as number[]).filter(n => drawn.includes(n)),
+              }))
+              .sort((a, b) => b.matches.length - a.matches.length);
+            return {
+              lotteryId: data.lotteryId,
+              displayName: data.displayName,
+              contestNumber: data.contestNumber,
+              drawDate: data.drawDate,
+              drawnNumbers: drawn,
+              gameMatches,
+            };
+          } catch {
+            return null;
+          }
+        })
+      );
 
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-    } else {
-      startListening();
+      const ok = results.filter(Boolean) as any[];
+      setLotteryDraws(ok);
+      if (ok.length === 0) setFetchError('Não foi possível obter os resultados oficiais agora. Tente novamente em instantes.');
+    } finally {
+      setFetching(false);
     }
-  };
-
-  // Auto-ativa o microfone ao abrir a página
-  useEffect(() => {
-    const timer = setTimeout(() => startListening(), 800);
-    return () => {
-      clearTimeout(timer);
-      recognitionRef.current?.stop();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedLotteryCheck, userGames]);
 
   const clearAll = () => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
-    setDrawnNumbers([]);
-    setTranscript('');
-    setCheckResults([]);
-    setMicError('');
+    setLotteryDraws([]);
+    setFetchError('');
   };
 
   const getLotteryName = (lotteryId: string) =>
@@ -214,14 +195,14 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
           </Button>
         </div>
 
-        {/* Conferência automática por áudio */}
+        {/* Conferência via resultado oficial da Caixa */}
         <div className="border-t border-white/10 pt-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Radio className="h-4 w-4 text-primary" />
-              <p className="text-sm font-semibold text-primary">Conferência Automática por Áudio</p>
+              <Search className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-primary">Conferência Oficial (após o sorteio)</p>
             </div>
-            {(drawnNumbers.length > 0 || transcript) && (
+            {(lotteryDraws.length > 0 || fetchError) && (
               <Button variant="ghost" size="sm" onClick={clearAll} className="text-muted-foreground text-xs h-7 px-2">
                 Limpar
               </Button>
@@ -229,10 +210,10 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Ative o microfone e aponte para o áudio do sorteio. As dezenas pronunciadas são capturadas e conferidas automaticamente contra seus jogos salvos, em qualquer modalidade.
+            Após o sorteio, clique em <span className="text-primary font-semibold">Buscar Resultado Oficial</span> para puxar as dezenas direto da Caixa e conferir automaticamente seus jogos. Mostra quantas dezenas foram acertadas em cada modalidade.
           </p>
 
-          {/* Filtro de modalidade + botão mic */}
+          {/* Filtro de modalidade + botão buscar */}
           <div className="flex gap-2 items-center">
             <Select value={selectedLotteryCheck} onValueChange={setSelectedLotteryCheck}>
               <SelectTrigger className="flex-1">
@@ -247,87 +228,88 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
             </Select>
 
             <Button
-              onClick={toggleListening}
-              className={`shrink-0 gap-2 font-semibold transition-all ${
-                isListening
-                  ? 'bg-red-600 hover:bg-red-700 text-white border-red-500 animate-pulse'
-                  : 'bg-primary/20 hover:bg-primary/30 border border-primary/50 text-primary'
-              }`}
+              onClick={fetchOfficialResults}
+              disabled={fetching}
+              className="shrink-0 gap-2 font-semibold bg-primary/20 hover:bg-primary/30 border border-primary/50 text-primary"
             >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              {isListening ? 'Parar' : 'Ativar Mic'}
+              <Search className="h-4 w-4" />
+              {fetching ? 'Buscando...' : 'Buscar Resultado Oficial'}
             </Button>
           </div>
 
-          {micError && (
-            <p className="text-xs text-red-400 bg-red-500/10 rounded-lg p-2">{micError}</p>
+          {fetchError && (
+            <p className="text-xs text-red-400 bg-red-500/10 rounded-lg p-2">{fetchError}</p>
           )}
 
-          {/* Dezenas detectadas */}
-          {drawnNumbers.length > 0 && (
-            <div className="rounded-lg bg-white/5 border border-white/10 p-3 space-y-2">
-              <p className="text-xs text-muted-foreground font-medium">
-                {drawnNumbers.length} dezena{drawnNumbers.length !== 1 ? 's' : ''} detectada{drawnNumbers.length !== 1 ? 's' : ''}
-                {isListening && <span className="ml-2 text-green-400 animate-pulse">● ouvindo...</span>}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {drawnNumbers.map(n => (
-                  <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-black text-xs font-black">
-                    {n.toString().padStart(2, '0')}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Status escutando sem números ainda */}
-          {isListening && drawnNumbers.length === 0 && (
-            <div className="flex items-center gap-2 text-xs text-green-400 animate-pulse">
-              <Mic className="h-3.5 w-3.5" />
-              Ouvindo... aguardando dezenas pronunciadas
-            </div>
-          )}
-
-          {/* Resultados automáticos */}
-          {checkResults.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                {checkResults.filter(r => r.matches.length > 0).length} jogo(s) com acerto(s) de {checkResults.length} conferidos
-              </p>
-              <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
-                {checkResults.map((res, i) => (
-                  <div key={i} className={`rounded-lg p-2.5 border text-xs flex items-start gap-2 ${
-                    res.matches.length >= 4 ? 'bg-green-500/10 border-green-500/30'
-                    : res.matches.length >= 2 ? 'bg-yellow-500/10 border-yellow-500/30'
-                    : 'bg-white/5 border-white/10 opacity-50'
-                  }`}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        <Badge variant="secondary" className="text-xs py-0 px-1.5">{getLotteryName(res.game.lotteryId)}</Badge>
-                        <span className={`font-bold text-xs ${
-                          res.matches.length >= 4 ? 'text-green-400'
-                          : res.matches.length >= 2 ? 'text-yellow-400'
-                          : 'text-muted-foreground'
-                        }`}>
-                          {res.matches.length} acerto{res.matches.length !== 1 ? 's' : ''}
-                        </span>
+          {/* Resultados por modalidade */}
+          {lotteryDraws.length > 0 && (
+            <div className="space-y-3 max-h-[28rem] overflow-y-auto pr-1">
+              {lotteryDraws.map((d) => {
+                const totalMatches = d.gameMatches.reduce((s, g) => s + g.matches.length, 0);
+                const bestMatch = d.gameMatches.reduce((m, g) => Math.max(m, g.matches.length), 0);
+                return (
+                  <div key={d.lotteryId} className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">{d.displayName}</Badge>
+                        <span className="text-xs text-muted-foreground">Concurso {d.contestNumber}</span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {(res.game.selectedNumbers as number[]).map((n: number) => (
-                          <span key={n} className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold leading-none ${
-                            res.matches.includes(n) ? 'bg-green-500 text-white' : 'bg-white/10 text-white/50'
-                          }`}>
+                      <span className={`text-xs font-bold ${bestMatch >= 4 ? 'text-green-400' : bestMatch >= 2 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                        {d.gameMatches.length} jogo(s) • melhor: {bestMatch} acerto(s) • total: {totalMatches}
+                      </span>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Dezenas sorteadas</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {d.drawnNumbers.map(n => (
+                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-black text-xs font-black">
                             {n.toString().padStart(2, '0')}
                           </span>
                         ))}
                       </div>
                     </div>
-                    {res.matches.length >= 2
-                      ? <CheckCircle className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
-                      : <XCircle className="h-4 w-4 text-white/20 shrink-0 mt-0.5" />}
+
+                    {d.gameMatches.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">Nenhum jogo salvo nesta modalidade.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {d.gameMatches.map((res, i) => (
+                          <div key={i} className={`rounded-lg p-2.5 border text-xs flex items-start gap-2 ${
+                            res.matches.length >= 4 ? 'bg-green-500/10 border-green-500/30'
+                            : res.matches.length >= 2 ? 'bg-yellow-500/10 border-yellow-500/30'
+                            : 'bg-white/5 border-white/10 opacity-70'
+                          }`}>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                                <span className={`font-bold text-xs ${
+                                  res.matches.length >= 4 ? 'text-green-400'
+                                  : res.matches.length >= 2 ? 'text-yellow-400'
+                                  : 'text-muted-foreground'
+                                }`}>
+                                  {res.matches.length} acerto{res.matches.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {(res.game.selectedNumbers as number[]).map((n: number) => (
+                                  <span key={n} className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold leading-none ${
+                                    res.matches.includes(n) ? 'bg-green-500 text-white' : 'bg-white/10 text-white/50'
+                                  }`}>
+                                    {n.toString().padStart(2, '0')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            {res.matches.length >= 2
+                              ? <CheckCircle className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
+                              : <XCircle className="h-4 w-4 text-white/20 shrink-0 mt-0.5" />}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           )}
         </div>

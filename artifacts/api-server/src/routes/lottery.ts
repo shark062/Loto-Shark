@@ -169,6 +169,28 @@ router.get("/:id/next-draw", async (req, res) => {
   }
 });
 
+// GET /api/lotteries/:id/latest — último resultado oficial (concurso + dezenas)
+router.get("/:id/latest", async (req, res) => {
+  const lottery = LOTTERIES.find(l => l.id === req.params.id);
+  if (!lottery) return res.status(404).json({ message: 'Lottery not found' });
+  try {
+    const data = await fetchLatestDraw(req.params.id);
+    if (!data) return res.status(503).json({ message: 'Resultado indisponível no momento' });
+    const contestNumber = data.numero || data.contestNumber || 0;
+    const drawnNumbers: number[] = (data.dezenas || data.listaDezenas || []).map(Number);
+    const drawDate = data.dataApuracao || data.drawDate || null;
+    return res.json({
+      lotteryId: lottery.id,
+      displayName: lottery.displayName,
+      contestNumber,
+      drawDate,
+      drawnNumbers,
+    });
+  } catch {
+    return res.status(503).json({ message: 'Falha ao buscar resultado oficial' });
+  }
+});
+
 // GET /api/lotteries/:id/prizes — dados reais de premiação da Caixa
 router.get("/:id/prizes", async (req, res) => {
   const lottery = LOTTERIES.find(l => l.id === req.params.id);
