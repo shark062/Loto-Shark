@@ -122,7 +122,7 @@ app.get("/api/youtube/live", async (req: Request, res: Response) => {
       const videoId = match[1];
       res.json({
         videoId,
-        embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`,
+        embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0`,
       });
     } else {
       res.status(404).json({ message: "Nenhuma transmissão ao vivo encontrada" });
