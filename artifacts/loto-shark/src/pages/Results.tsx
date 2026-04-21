@@ -30,6 +30,7 @@ import type { UserGame } from "@/types/lottery";
 
 const CANAL_CAIXA_URL = "https://www.youtube.com/@canalcaixa/live";
 const CANAL_CAIXA_CHANNEL_ID = "UCvqoM_rM5ZNRW0V2TjNLk8A";
+const DRAWS_CACHE_KEY = 'shark_official_draws_cache';
 
 const PT_WORD_MAP: Record<string, number> = {
   'um':1,'uma':1,'dois':2,'duas':2,'três':3,'quatro':4,'cinco':5,'seis':6,'sete':7,
@@ -97,6 +98,23 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
   }[]>([]);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState('');
+  const [fromCache, setFromCache] = useState(false);
+
+  // Carrega cache do localStorage ao montar
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAWS_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLotteryDraws(parsed);
+          setFromCache(true);
+        }
+      }
+    } catch {
+      // ignora erros de parse
+    }
+  }, []);
 
   const fetchOfficialResults = useCallback(async () => {
     setFetching(true);
@@ -142,6 +160,14 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
 
       const ok = results.filter(Boolean) as any[];
       setLotteryDraws(ok);
+      setFromCache(false);
+      if (ok.length > 0) {
+        try {
+          localStorage.setItem(DRAWS_CACHE_KEY, JSON.stringify(ok));
+        } catch {
+          // ignora erros de storage
+        }
+      }
       if (ok.length === 0) setFetchError('Não foi possível obter os resultados oficiais agora. Tente novamente em instantes.');
     } finally {
       setFetching(false);
@@ -151,6 +177,12 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
   const clearAll = () => {
     setLotteryDraws([]);
     setFetchError('');
+    setFromCache(false);
+    try {
+      localStorage.removeItem(DRAWS_CACHE_KEY);
+    } catch {
+      // ignora
+    }
   };
 
   const getLotteryName = (lotteryId: string) =>
@@ -239,6 +271,13 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
 
           {fetchError && (
             <p className="text-xs text-red-400 bg-red-500/10 rounded-lg p-2">{fetchError}</p>
+          )}
+
+          {fromCache && lotteryDraws.length > 0 && (
+            <p className="text-xs text-yellow-400/70 bg-yellow-500/10 rounded-lg p-2 flex items-center gap-1.5">
+              <span>⚡</span>
+              Exibindo resultado salvo anteriormente. Clique em "Buscar Resultado Oficial" para atualizar.
+            </p>
           )}
 
           {/* Resultados por modalidade */}
