@@ -115,20 +115,46 @@ app.get("/api/youtube/live", async (req: Request, res: Response) => {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "pt-BR,pt;q=0.9",
       },
+      redirect: "follow",
     });
+    const finalUrl = response.url;
     const html = await response.text();
-    const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-    if (match?.[1]) {
-      const videoId = match[1];
-      res.json({
-        videoId,
-        embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0`,
-      });
-    } else {
-      res.status(404).json({ message: "Nenhuma transmissão ao vivo encontrada" });
+
+    // Verifica se é realmente uma transmissão ao vivo agora
+    const liveMarkers = [
+      '"isLiveNow":true',
+      '"isLive":true',
+      '"isLiveContent":true',
+      '"isLiveBroadcast":true',
+      'BADGE_STYLE_TYPE_LIVE_NOW',
+      '"liveBroadcastDetails":{"isLiveNow":true',
+    ];
+    const isLive = liveMarkers.some(m => html.includes(m));
+
+    // Se o YouTube redirecionou para /watch?v=... é live; se foi pra /channel ou home, não é
+    const redirectedToWatch = /\/watch\?v=([a-zA-Z0-9_-]{11})/.exec(finalUrl);
+
+    if (!isLive && !redirectedToWatch) {
+      return res.status(404).json({ message: "Nenhuma transmissão ao vivo encontrada no momento" });
     }
+
+    // Pega o videoId — preferencialmente da URL final, senão do HTML
+    let videoId: string | null = redirectedToWatch?.[1] ?? null;
+    if (!videoId) {
+      const m = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+      videoId = m?.[1] ?? null;
+    }
+
+    if (!videoId) {
+      return res.status(404).json({ message: "Nenhuma transmissão ao vivo encontrada no momento" });
+    }
+
+    return res.json({
+      videoId,
+      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0`,
+    });
   } catch (err: any) {
-    res.status(500).json({ message: "Erro ao buscar transmissão ao vivo", error: err.message });
+    return res.status(500).json({ message: "Erro ao buscar transmissão ao vivo", error: err.message });
   }
 });
 
