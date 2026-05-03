@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useLotteryTypes, useNumberFrequencies } from "@/hooks/useLotteryData";
 import { apiRequest } from "@/lib/queryClient";
+import { NumberBall } from "@/components/NumberBall";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Flame, 
@@ -228,9 +229,7 @@ export default function HeatMap() {
               {mostFrequent.map((freq, index) => (
                 <div key={freq.number} className="flex items-center justify-between p-2 bg-white/[0.07] rounded">
                   <div className="flex items-center space-x-3">
-                    <Badge variant="destructive" className="w-8 h-8 rounded-full flex items-center justify-center p-0">
-                      {freq.number}
-                    </Badge>
+                    <NumberBall number={freq.number} size="xs" />
                     <span className="font-mono">#{index + 1}</span>
                   </div>
                   <div className="text-right">
@@ -256,9 +255,7 @@ export default function HeatMap() {
               {leastFrequent.map((freq, index) => (
                 <div key={freq.number} className="flex items-center justify-between p-2 bg-white/[0.07] rounded">
                   <div className="flex items-center space-x-3">
-                    <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center p-0 bg-white/[0.07] text-primary-foreground">
-                      {freq.number}
-                    </Badge>
+                    <NumberBall number={freq.number} size="xs" />
                     <span className="font-mono">#{index + 1}</span>
                   </div>
                   <div className="text-right">
@@ -288,9 +285,7 @@ export default function HeatMap() {
                 <div className="flex flex-wrap gap-2">
                   {tendenciaAlta.map((freq) => (
                     <div key={freq.number} className="flex flex-col items-center">
-                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-amber-500/80 text-white text-sm font-bold shadow shadow-amber-500/40 border border-amber-400/50">
-                        {freq.number.toString().padStart(2, '0')}
-                      </span>
+                      <NumberBall number={freq.number} size="sm" temperature="warm" />
                       <span className="text-xs text-amber-300 mt-0.5">{freq.frequency}x</span>
                     </div>
                   ))}
@@ -315,9 +310,7 @@ export default function HeatMap() {
                 <div className="flex flex-wrap gap-2">
                   {estrategicos.map((freq) => (
                     <div key={freq.number} className="flex flex-col items-center">
-                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-violet-500/70 text-white text-sm font-bold shadow shadow-violet-500/40 border border-violet-400/50">
-                        {freq.number.toString().padStart(2, '0')}
-                      </span>
+                      <NumberBall number={freq.number} size="sm" temperature="cold" />
                       <span className="text-xs text-violet-300 mt-0.5">{freq.frequency}x</span>
                     </div>
                   ))}
@@ -337,10 +330,8 @@ export default function HeatMap() {
             <CardContent>
               {selectedNumber ? (
                 <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-accent neon-text mb-2" data-testid="selected-number">
-                      {selectedNumber.toString().padStart(2, '0')}
-                    </div>
+                  <div className="text-center flex flex-col items-center">
+                    <NumberBall number={selectedNumber} size="lg" className="mb-2" data-testid="selected-number" />
                     <Badge 
                       variant="secondary" 
                       className={`${

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navigation from "@/components/Navigation";
+import { NumberBall } from "@/components/NumberBall";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -602,35 +603,21 @@ export default function Generator() {
 
                       {/* Grid de números - Cartela estilo mapa de calor */}
                       <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 mb-3 border border-white/20 shadow-lg">
-                        <div className="number-grid grid grid-cols-10 gap-1.5">
+                        <div className="number-grid flex flex-wrap gap-1 justify-center">
                           {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
                             const number = i + 1;
                             const isSelected = selectedNumbers.includes(number);
                             const freq = getNumberFrequency(number);
-                            const temp = freq?.temperature || 'cold';
-
+                            const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
                             return (
-                              <button
+                              <NumberBall
                                 key={number}
-                                type="button"
+                                number={number}
+                                size="xs"
                                 onClick={() => toggleNumber(number)}
-                                className={`
-                                  relative aspect-square rounded-lg text-xs font-bold 
-                                  transition-all duration-200 border flex items-center justify-center
-                                  ${isSelected
-                                    ? temp === 'hot' 
-                                      ? 'bg-red-500/90 border-red-400 text-white shadow-lg shadow-red-500/50 scale-110 z-10' 
-                                      : temp === 'warm' 
-                                      ? 'bg-yellow-500/90 border-yellow-400 text-white shadow-lg shadow-yellow-500/50 scale-110 z-10' 
-                                      : 'bg-blue-500/90 border-blue-400 text-white shadow-lg shadow-blue-500/50 scale-110 z-10'
-                                    : 'bg-black/40 border-white/20 text-white/70 hover:bg-white/20 hover:border-white/40 hover:text-white hover:scale-105'
-                                  }
-                                `}
-                              >
-                                <span className={isSelected ? 'font-extrabold' : ''}>
-                                  {number.toString().padStart(2, '0')}
-                                </span>
-                              </button>
+                                selected={isSelected}
+                                temperature={temp}
+                              />
                             );
                           })}
                         </div>
@@ -659,20 +646,9 @@ export default function Generator() {
                             <div className="flex flex-wrap gap-1.5">
                               {selectedNumbers.map((num) => {
                                 const freq = getNumberFrequency(num);
-                                const temp = freq?.temperature || 'cold';
+                                const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
                                 return (
-                                  <div
-                                    key={num}
-                                    className={`
-                                      px-2.5 py-1 rounded-lg text-sm font-bold shadow-md
-                                      ${temp === 'hot' ? 'bg-red-500 text-white shadow-red-500/40' :
-                                        temp === 'warm' ? 'bg-yellow-500 text-white shadow-yellow-500/40' :
-                                        'bg-blue-500 text-white shadow-blue-500/40'
-                                      }
-                                    `}
-                                  >
-                                    {num.toString().padStart(2, '0')}
-                                  </div>
+                                  <NumberBall key={num} number={num} size="xs" selected temperature={temp} />
                                 );
                               })}
                             </div>
@@ -771,23 +747,21 @@ export default function Generator() {
 
                         {/* Number grid */}
                         <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 mb-3 border border-white/20">
-                          <div className="number-grid grid grid-cols-10 gap-1.5">
+                          <div className="number-grid flex flex-wrap gap-1 justify-center">
                             {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
                               const number = i + 1;
                               const isSel = selectedNumbers.includes(number);
                               const freq = getNumberFrequency(number);
-                              const temp = freq?.temperature || 'cold';
+                              const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
                               return (
-                                <button key={number} type="button" onClick={() => toggleNumber(number)}
-                                  className={`relative aspect-square rounded-lg text-xs font-bold transition-all duration-200 border flex items-center justify-center
-                                    ${isSel
-                                      ? temp === 'hot'  ? 'bg-red-500/90 border-red-400 text-white shadow-lg shadow-red-500/50 scale-110 z-10'
-                                      : temp === 'warm' ? 'bg-yellow-500/90 border-yellow-400 text-white shadow-lg shadow-yellow-500/50 scale-110 z-10'
-                                      :                   'bg-emerald-500/90 border-emerald-400 text-white shadow-lg shadow-emerald-500/50 scale-110 z-10'
-                                      : 'bg-black/40 border-white/20 text-white/70 hover:bg-white/20 hover:border-white/40 hover:text-white hover:scale-105'
-                                    }`}>
-                                  <span className={isSel ? 'font-extrabold' : ''}>{number.toString().padStart(2, '0')}</span>
-                                </button>
+                                <NumberBall
+                                  key={number}
+                                  number={number}
+                                  size="xs"
+                                  onClick={() => toggleNumber(number)}
+                                  selected={isSel}
+                                  temperature={temp}
+                                />
                               );
                             })}
                           </div>
@@ -798,12 +772,9 @@ export default function Generator() {
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {selectedNumbers.map(num => {
                               const freq = getNumberFrequency(num);
-                              const temp = freq?.temperature || 'cold';
+                              const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
                               return (
-                                <div key={num} className={`px-2.5 py-1 rounded-lg text-sm font-bold shadow-md
-                                  ${temp === 'hot' ? 'bg-red-500 text-white' : temp === 'warm' ? 'bg-yellow-500 text-white' : 'bg-emerald-500 text-white'}`}>
-                                  {num.toString().padStart(2, '0')}
-                                </div>
+                                <NumberBall key={num} number={num} size="xs" selected temperature={temp} />
                               );
                             })}
                           </div>
@@ -1040,9 +1011,7 @@ export default function Generator() {
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {ctx.hot.map((n: number) => (
-                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-500/80 text-white text-xs font-bold shadow shadow-red-500/40">
-                            {n.toString().padStart(2, '0')}
-                          </span>
+                          <NumberBall key={n} number={n} size="xs" temperature="hot" />
                         ))}
                       </div>
                     </div>
@@ -1055,9 +1024,7 @@ export default function Generator() {
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {ctx.cold.map((n: number) => (
-                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-500/80 text-white text-xs font-bold shadow shadow-blue-500/40">
-                            {n.toString().padStart(2, '0')}
-                          </span>
+                          <NumberBall key={n} number={n} size="xs" temperature="cold" />
                         ))}
                       </div>
                     </div>
@@ -1070,9 +1037,7 @@ export default function Generator() {
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {ctx.warm.map((n: number) => (
-                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-yellow-500/70 text-white text-xs font-bold shadow shadow-yellow-500/40">
-                            {n.toString().padStart(2, '0')}
-                          </span>
+                          <NumberBall key={n} number={n} size="xs" temperature="warm" />
                         ))}
                       </div>
                     </div>
@@ -1135,13 +1100,12 @@ export default function Generator() {
 
                         <div className="flex flex-wrap gap-2 mb-3">
                           {game.numbers.map((number) => (
-                            <Badge
+                            <NumberBall
                               key={number}
-                              className={getNumberStyle(number, game.strategy)}
+                              number={number}
+                              size="sm"
                               data-testid={`game-${index}-number-${number}`}
-                            >
-                              {number.toString().padStart(2, '0')}
-                            </Badge>
+                            />
                           ))}
                         </div>
 
@@ -1327,9 +1291,7 @@ export default function Generator() {
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {game.numbers.map(n => (
-                            <Badge key={n} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-cyan-600 text-white p-0">
-                              {n.toString().padStart(2, '0')}
-                            </Badge>
+                            <NumberBall key={n} number={n} size="xs" />
                           ))}
                         </div>
                       </CardContent>
@@ -1514,9 +1476,7 @@ export default function Generator() {
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {game.numbers.map(n => (
-                            <Badge key={n} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-yellow-500 text-white p-0">
-                              {n.toString().padStart(2, '0')}
-                            </Badge>
+                            <NumberBall key={n} number={n} size="xs" />
                           ))}
                         </div>
                       </CardContent>

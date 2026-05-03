@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Navigation from '@/components/Navigation';
+import { NumberBall } from '@/components/NumberBall';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -213,12 +214,7 @@ export default function AIAssistant() {
                 <div key={idx} className="flex items-center justify-between bg-black/30 rounded p-3">
                   <div className="flex gap-2 flex-wrap">
                     {game.map((num: number) => (
-                      <Badge
-                        key={num}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold bg-gradient-to-r from-cyan-500 to-purple-500 text-white"
-                      >
-                        {num.toString().padStart(2, '0')}
-                      </Badge>
+                      <NumberBall key={num} number={num} size="sm" />
                     ))}
                   </div>
                   <Button

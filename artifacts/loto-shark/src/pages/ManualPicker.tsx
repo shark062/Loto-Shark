@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useLotteryTypes, useNumberFrequencies, useLotteryDraws } from "@/hooks/useLotteryData";
 import { apiRequest } from "@/lib/queryClient";
+import { NumberBall } from "@/components/NumberBall";
 import { 
   Target, 
   Flame, 
@@ -240,20 +241,22 @@ export default function ManualPicker() {
               <CardContent>
                 {selectedLotteryData ? (
                   <>
-                    <div className="grid grid-cols-10 gap-2 mb-6">
+                    <div className="flex flex-wrap gap-2 mb-6 justify-center">
                       {Array.from({ length: selectedLotteryData.totalNumbers }, (_, i) => {
                         const number = i + 1;
                         const isSelected = selectedNumbers.includes(number);
+                        const freq = getNumberFrequency(number);
+                        const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
 
                         return (
-                          <button
+                          <NumberBall
                             key={number}
-                            onClick={() => toggleNumber(number)}
-                            className={getNumberStyle(number, isSelected)}
-                            disabled={frequenciesLoading}
-                          >
-                            {number.toString().padStart(2, '0')}
-                          </button>
+                            number={number}
+                            size="sm"
+                            onClick={() => !frequenciesLoading && toggleNumber(number)}
+                            selected={isSelected}
+                            temperature={temp}
+                          />
                         );
                       })}
                     </div>
@@ -299,19 +302,9 @@ export default function ManualPicker() {
                     <div className="flex flex-wrap gap-2">
                       {selectedNumbers.map((num) => {
                         const freq = getNumberFrequency(num);
-                        const temp = freq?.temperature || 'cold';
-                        
+                        const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
                         return (
-                          <Badge
-                            key={num}
-                            className={`${
-                              temp === 'hot' ? 'bg-red-500' :
-                              temp === 'warm' ? 'bg-yellow-500' :
-                              'bg-blue-500'
-                            } text-white text-base px-3 py-1`}
-                          >
-                            {num.toString().padStart(2, '0')}
-                          </Badge>
+                          <NumberBall key={num} number={num} size="sm" selected temperature={temp} />
                         );
                       })}
                     </div>
@@ -445,16 +438,12 @@ export default function ManualPicker() {
                             const temp = freq?.temperature || 'cold';
                             
                             return (
-                              <Badge
+                              <NumberBall
                                 key={num}
-                                className={`${
-                                  temp === 'hot' ? 'bg-red-500/80' :
-                                  temp === 'warm' ? 'bg-yellow-500/80' :
-                                  'bg-blue-500/80'
-                                } text-white font-mono`}
-                              >
-                                {num.toString().padStart(2, '0')}
-                              </Badge>
+                                number={num}
+                                size="xs"
+                                temperature={temp as "hot" | "warm" | "cold" | undefined}
+                              />
                             );
                           })}
                         </div>

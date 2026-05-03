@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Navigation from "@/components/Navigation";
+import { NumberBall } from "@/components/NumberBall";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -351,9 +352,7 @@ export default function AIAnalysis() {
                             <div className="flex flex-wrap gap-1">
                               <span className="text-xs text-muted-foreground mr-2">Próximos preditos:</span>
                               {pattern.predictedNext.map((num) => (
-                                <Badge key={num} variant="outline" className="text-xs">
-                                  {num.toString().padStart(2, '0')}
-                                </Badge>
+                                <NumberBall key={num} number={num} size="xs" />
                               ))}
                             </div>
                             <Button
@@ -439,13 +438,12 @@ export default function AIAnalysis() {
                             ];
                             const colorClass = colors[index % colors.length];
                             return (
-                              <Badge
+                              <NumberBall
                                 key={index}
-                                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white ${colorClass}`}
+                                number={number}
+                                size="sm"
                                 data-testid={`prediction-number-${number}`}
-                              >
-                                {number.toString().padStart(2, '0')}
-                              </Badge>
+                              />
                             );
                           })}
                         </div>
@@ -495,9 +493,7 @@ export default function AIAnalysis() {
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {alt.numbers.map((num: number, numIndex: number) => (
-                                    <Badge key={numIndex} variant="secondary" className="text-xs">
-                                      {num.toString().padStart(2, '0')}
-                                    </Badge>
+                                    <NumberBall key={numIndex} number={num} size="xs" />
                                   ))}
                                 </div>
                               </CardContent>

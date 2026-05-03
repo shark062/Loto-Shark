@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Flame, Snowflake, Sun } from "lucide-react";
+import { Flame } from "lucide-react";
+import { NumberBall } from "@/components/NumberBall";
 import type { NumberFrequency } from "@/types/lottery";
 
 interface HeatMapGridProps {
@@ -70,25 +71,21 @@ export default function HeatMapGrid({
       </CardHeader>
       <CardContent>
         {/* Numbers Grid */}
-        <div
-          className="number-grid mb-6 grid grid-cols-10 gap-1.5"
-        >
+        <div className="number-grid mb-6 flex flex-wrap gap-1.5 justify-center">
           {Array.from({ length: maxNumbers }, (_, i) => {
             const number = i + 1;
             const freq = frequencies.find(f => f.number === number);
-            const style = getNumberStyle(number);
-
             return (
-              <button
+              <NumberBall
                 key={number}
-                onClick={() => onNumberClick?.(number)}
-                className={`aspect-square ${style} rounded-lg flex items-center justify-center font-bold text-[10px] shadow-sm hover:scale-105 transition-all duration-200 cursor-pointer border`}
+                number={number}
+                size="xs"
+                onClick={onNumberClick ? () => onNumberClick(number) : undefined}
+                temperature={freq?.temperature as "hot" | "warm" | "cold" | undefined}
                 title={`Número ${number} - ${freq?.frequency || 0} vezes - ${freq?.temperature || 'cold'}`}
                 data-testid={`number-${number}`}
                 data-temperature={freq?.temperature || 'cold'}
-              >
-                {number.toString().padStart(2, '0')}
-              </button>
+              />
             );
           })}
         </div>

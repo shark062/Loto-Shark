@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLotteryTypes } from "@/hooks/useLotteryData";
+import { NumberBall } from "@/components/NumberBall";
 import { jsPDF } from "jspdf";
 import { 
   Trophy, 
@@ -302,9 +303,7 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
                       <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Dezenas sorteadas</p>
                       <div className="flex flex-wrap gap-1.5">
                         {d.drawnNumbers.map(n => (
-                          <span key={n} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-black text-xs font-black">
-                            {n.toString().padStart(2, '0')}
-                          </span>
+                          <NumberBall key={n} number={n} size="xs" />
                         ))}
                       </div>
                     </div>
@@ -331,11 +330,13 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
                               </div>
                               <div className="flex flex-wrap gap-1">
                                 {(res.game.selectedNumbers as number[]).map((n: number) => (
-                                  <span key={n} className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold leading-none ${
-                                    res.matches.includes(n) ? 'bg-green-500 text-white' : 'bg-white/10 text-white/50'
-                                  }`}>
-                                    {n.toString().padStart(2, '0')}
-                                  </span>
+                                  <NumberBall
+                                    key={n}
+                                    number={n}
+                                    size="xs"
+                                    dimmed={!res.matches.includes(n)}
+                                    selected={res.matches.includes(n)}
+                                  />
                                 ))}
                               </div>
                             </div>
@@ -629,9 +630,7 @@ export default function Results() {
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {game.selectedNumbers.map((num: number) => (
-                          <span key={num} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/10 text-xs font-bold text-white">
-                            {num.toString().padStart(2, '0')}
-                          </span>
+                          <NumberBall key={num} number={num} size="xs" />
                         ))}
                       </div>
                     </CardContent>
