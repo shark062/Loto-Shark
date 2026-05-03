@@ -73,21 +73,43 @@ export default function HeatMap() {
 
   const getMostFrequent = () => {
     if (!frequencies) return [];
-    return frequencies
+    return [...frequencies]
       .sort((a, b) => b.frequency - a.frequency)
       .slice(0, 5);
   };
 
   const getLeastFrequent = () => {
     if (!frequencies) return [];
-    return frequencies
+    return [...frequencies]
       .sort((a, b) => a.frequency - b.frequency)
       .slice(0, 5);
+  };
+
+  // ⚡ Tendência alta: números mornos com frequência acima da média (prestes a esquentar)
+  const getTendenciaAlta = () => {
+    if (!frequencies || frequencies.length === 0) return [];
+    const avgFreq = frequencies.reduce((s, f) => s + f.frequency, 0) / frequencies.length;
+    return [...frequencies]
+      .filter(f => f.temperature === 'warm' && f.frequency >= avgFreq)
+      .sort((a, b) => b.frequency - a.frequency)
+      .slice(0, 6);
+  };
+
+  // 🧠 Estratégicos: frios com frequência histórica acima da mediana (atrasados fortes)
+  const getEstrategicos = () => {
+    if (!frequencies || frequencies.length === 0) return [];
+    const sorted = [...frequencies].sort((a, b) => b.frequency - a.frequency);
+    const mediana = sorted[Math.floor(sorted.length / 2)]?.frequency ?? 0;
+    return sorted
+      .filter(f => f.temperature === 'cold' && f.frequency >= mediana)
+      .slice(0, 6);
   };
 
   const stats = getTemperatureStats();
   const mostFrequent = getMostFrequent();
   const leastFrequent = getLeastFrequent();
+  const tendenciaAlta = getTendenciaAlta();
+  const estrategicos = getEstrategicos();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -249,6 +271,60 @@ export default function HeatMap() {
               ))}
             </CardContent>
           </Card>
+
+          {/* ⚡ Tendência Alta */}
+          {tendenciaAlta.length > 0 && (
+            <Card className="neon-border border-amber-500/40">
+              <CardHeader>
+                <CardTitle className="text-amber-400 flex items-center">
+                  <Zap className="h-5 w-5 mr-2" />
+                  ⚡ Tendência Alta
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Números mornos acima da frequência média — prestes a esquentar
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {tendenciaAlta.map((freq) => (
+                    <div key={freq.number} className="flex flex-col items-center">
+                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-amber-500/80 text-white text-sm font-bold shadow shadow-amber-500/40 border border-amber-400/50">
+                        {freq.number.toString().padStart(2, '0')}
+                      </span>
+                      <span className="text-xs text-amber-300 mt-0.5">{freq.frequency}x</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 🧠 Estratégicos */}
+          {estrategicos.length > 0 && (
+            <Card className="neon-border border-violet-500/40">
+              <CardHeader>
+                <CardTitle className="text-violet-400 flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2" />
+                  🧠 Estratégicos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Frios com bom histórico — atrasados com alta probabilidade de retorno
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {estrategicos.map((freq) => (
+                    <div key={freq.number} className="flex flex-col items-center">
+                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-violet-500/70 text-white text-sm font-bold shadow shadow-violet-500/40 border border-violet-400/50">
+                        {freq.number.toString().padStart(2, '0')}
+                      </span>
+                      <span className="text-xs text-violet-300 mt-0.5">{freq.frequency}x</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Selected Number Details */}
           <Card className="neon-border">

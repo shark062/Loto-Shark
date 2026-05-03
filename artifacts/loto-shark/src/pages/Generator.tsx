@@ -51,6 +51,15 @@ import {
 import { gerarRelatorio, getEmojiEstrategia, type Relatorio } from "@/core/sharkAnalytics";
 import { desdobramentoInteligente } from "@/core/sharkDesdobramento";
 import { salvarJogosGerados, toSavedGame } from "@/core/sharkSavedGames";
+import {
+  calcularScorePrecisao,
+  getRankColor,
+  getRankBgColor,
+  getRankEmoji,
+  type PrecisionResult,
+  type FreqEntry,
+} from "@/core/sharkPrecisionEngine";
+import { registrarDesempenho } from "@/core/sharkAutoLearning";
 import BettingPlatformIntegration from "@/components/BettingPlatformIntegration";
 
 const generateGameSchema = z.object({
@@ -125,6 +134,8 @@ export default function Generator() {
   const [relatorio, setRelatorio] = useState<Relatorio>({});
   const [jogosInteligente, setJogosInteligente] = useState<GeneratedGame[]>([]);
   const [showInteligente, setShowInteligente] = useState(false);
+  const [precisionMap, setPrecisionMap] = useState<Record<string, PrecisionResult>>({});
+  const [isTurbo, setIsTurbo] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -140,6 +151,7 @@ export default function Generator() {
     setSharkRawGames([]);
     setDesdobramentoGames([]);
     setShowDesdobramento(false);
+    setPrecisionMap({});
     toast({ title: "Jogos Limpos!", description: "Todos os jogos foram removidos." });
   };
 
@@ -226,6 +238,26 @@ export default function Generator() {
         sharkContexto: game.sharkContexto,
         rawGame: game,
       })));
+
+      // ── Score de precisão (motor frontend) ──
+      const freqsRaw = frequenciesRaw?.frequencies ?? [];
+      const freqEntries: FreqEntry[] = freqsRaw.map((f: any) => ({
+        number: f.number,
+        frequency: f.frequency,
+        temperature: f.temperature,
+      }));
+      const modalityId = data[0]?.lotteryId || form.getValues('lotteryId');
+      const lotteryObj = lotteryTypes?.find(l => l.id === modalityId);
+      const totalNums = lotteryObj?.totalNumbers ?? 60;
+      const newPrecision: Record<string, PrecisionResult> = {};
+      data.forEach((game: any, idx: number) => {
+        const nums = game.selectedNumbers as number[];
+        const pr = calcularScorePrecisao(nums, freqEntries, modalityId, totalNums);
+        newPrecision[String(idx)] = pr;
+        registrarDesempenho(game.sharkOrigem || game.strategy || 'shark', pr.score);
+      });
+      setPrecisionMap(newPrecision);
+
       if (isShark) {
         setSharkRawGames(data);
         setDesdobramentoGames([]);
@@ -896,6 +928,94 @@ export default function Generator() {
                   )}
                 </Button>
               </form>
+
+              {/* ── Modo Turbo: Gerar 10 Jogos ELITE ─────────────────── */}
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  disabled={isTurbo || !selectedLotteryId}
+                  onClick={async () => {
+                    if (!selectedLotteryId) {
+                      toast({ title: "Selecione a modalidade", variant: "destructive" });
+                      return;
+                    }
+                    const lotteryObj = lotteryTypes?.find(l => l.id === selectedLotteryId);
+                    if (!lotteryObj) return;
+                    setIsTurbo(true);
+                    const freqsRaw = frequenciesRaw?.frequencies ?? [];
+                    const freqEntries: FreqEntry[] = freqsRaw.map((f: any) => ({
+                      number: f.number, frequency: f.frequency, temperature: f.temperature,
+                    }));
+                    const eliteGames: GeneratedGame[] = [];
+                    const elitePrecision: Record<string, PrecisionResult> = {};
+                    let attempts = 0;
+                    const MAX_ATTEMPTS = 8;
+                    while (eliteGames.length < 10 && attempts < MAX_ATTEMPTS) {
+                      attempts++;
+                      try {
+                        const payload = {
+                          lotteryId: selectedLotteryId,
+                          numbersCount: lotteryObj.minNumbers,
+                          gamesCount: 5,
+                          strategy: 'shark',
+                          pesos: carregarPesos(),
+                        };
+                        const res = await apiRequest('POST', '/api/games/generate', payload);
+                        const data = await res.json();
+                        for (const game of data) {
+                          if (eliteGames.length >= 10) break;
+                          const pr = calcularScorePrecisao(
+                            game.selectedNumbers,
+                            freqEntries,
+                            selectedLotteryId,
+                            lotteryObj.totalNumbers,
+                          );
+                          if (pr.score >= 80) {
+                            const idx = eliteGames.length;
+                            eliteGames.push({
+                              numbers: game.selectedNumbers,
+                              strategy: game.strategy || 'shark',
+                              confidence: game.confidence,
+                              reasoning: game.reasoning,
+                              sharkScore: game.sharkScore,
+                              sharkOrigem: game.sharkOrigem,
+                              sharkContexto: game.sharkContexto,
+                              rawGame: game,
+                            });
+                            elitePrecision[String(idx)] = pr;
+                            registrarDesempenho(game.sharkOrigem || 'shark', pr.score);
+                          }
+                        }
+                      } catch { break; }
+                    }
+                    setIsTurbo(false);
+                    if (eliteGames.length === 0) {
+                      toast({ title: "Nenhum jogo ELITE encontrado", description: "Tente novamente ou selecione outra modalidade.", variant: "destructive" });
+                      return;
+                    }
+                    setGeneratedGames(eliteGames);
+                    setPrecisionMap(elitePrecision);
+                    setSharkRawGames(eliteGames.map(g => g.rawGame).filter(Boolean));
+                    queryClient.invalidateQueries({ queryKey: ["/api/games"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/user/games"] });
+                    toast({
+                      title: `🏆 Modo Turbo — ${eliteGames.length} Jogos ELITE!`,
+                      description: `Score mínimo 80 garantido em todos os jogos.`,
+                    });
+                  }}
+                  className="w-full border text-yellow-300 bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/40"
+                  data-testid="turbo-generate-button"
+                >
+                  {isTurbo ? (
+                    <><RefreshCw className="h-5 w-5 mr-2 animate-spin" />BUSCANDO JOGOS ELITE...</>
+                  ) : (
+                    <><Zap className="h-5 w-5 mr-2" />MODO TURBO — 10 JOGOS ELITE 🏆</>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center mt-1">
+                  Gera apenas jogos com score de precisão ≥ 80
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -1024,6 +1144,33 @@ export default function Generator() {
                             </Badge>
                           ))}
                         </div>
+
+                        {/* ── Score de Precisão Shark ─────────────────── */}
+                        {precisionMap[String(index)] && (() => {
+                          const pr = precisionMap[String(index)];
+                          return (
+                            <div className={`rounded-lg border px-3 py-2 mb-2 ${getRankBgColor(pr.rank)}`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold flex items-center gap-1">
+                                  🐋 SCORE SHARK:
+                                  <span className={`text-base font-extrabold ml-1 ${getRankColor(pr.rank)}`}>
+                                    {pr.score}
+                                  </span>
+                                </span>
+                                <span className={`text-xs font-bold ${getRankColor(pr.rank)}`}>
+                                  {getRankEmoji(pr.rank)} {pr.rank}
+                                </span>
+                              </div>
+                              {pr.reasons.length > 0 && (
+                                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                  {pr.reasons.slice(0, 3).map((r, i) => (
+                                    <span key={i} className="text-xs text-white/60">✔ {r}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {game.strategy === 'shark' ? (
                           <div className="space-y-1 mt-1">
