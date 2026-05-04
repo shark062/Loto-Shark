@@ -231,29 +231,29 @@ export default function AIAnalysis() {
         </div>
 
         {/* AI Status Overview */}
-        <Card className="neon-border bg-black/20">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="flex flex-col items-center text-center">
-                <Brain className="h-7 w-7 mb-2 text-secondary" />
-                <div className="text-xl font-bold text-secondary neon-text" data-testid="ai-level">
+        <Card className="neon-border bg-black/20 mb-6">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-3 gap-3 divide-x divide-border/30">
+              <div className="flex flex-col items-center text-center px-2">
+                <Brain className="h-6 w-6 mb-1 text-secondary" />
+                <div className="text-lg font-bold text-secondary neon-text" data-testid="ai-level">
                   Nível {Math.min(10, Math.floor((userStats?.totalGames || 0) / 10) + 1)}
                 </div>
                 <div className="text-xs text-muted-foreground">Sistema IA</div>
               </div>
 
-              <div className="flex flex-col items-center text-center">
-                <Activity className="h-7 w-7 mb-2 text-primary" />
-                <div className="text-xl font-bold text-primary neon-text" data-testid="learning-progress">
+              <div className="flex flex-col items-center text-center px-2">
+                <Activity className="h-6 w-6 mb-1 text-primary" />
+                <div className="text-lg font-bold text-primary neon-text" data-testid="learning-progress">
                   {aiLearningProgress}%
                 </div>
-                <div className="text-xs text-muted-foreground">Aprendizado ({userStats?.totalGames || 0} jogos)</div>
-                <Progress value={aiLearningProgress} className="mt-2 h-1.5 w-full" />
+                <div className="text-xs text-muted-foreground">Aprendizado</div>
+                <Progress value={aiLearningProgress} className="mt-1.5 h-1 w-full" />
               </div>
 
-              <div className="flex flex-col items-center text-center">
-                <Target className="h-7 w-7 mb-2 text-accent" />
-                <div className="text-xl font-bold text-accent neon-text" data-testid="accuracy-improvement">
+              <div className="flex flex-col items-center text-center px-2">
+                <Target className="h-6 w-6 mb-1 text-accent" />
+                <div className="text-lg font-bold text-accent neon-text" data-testid="accuracy-improvement">
                   {userStats ? `${((userStats.wins || 0) / (userStats.totalGames || 1) * 100).toFixed(1)}%` : '0%'}
                 </div>
                 <div className="text-xs text-muted-foreground">Taxa de Acerto</div>
@@ -263,7 +263,7 @@ export default function AIAnalysis() {
         </Card>
 
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
           <Select value={selectedLottery} onValueChange={setSelectedLottery}>
             <SelectTrigger className="w-64 neon-border glass-panel text-white">
               <SelectValue placeholder="Selecione a modalidade" />

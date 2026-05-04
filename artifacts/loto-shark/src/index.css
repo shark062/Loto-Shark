@@ -184,7 +184,7 @@ input, select {
 :root {
   --background: transparent;
   --foreground: hsl(0, 0%, 95%);
-  --card: rgba(5, 5, 20, 0.50);
+  --card: rgba(5, 5, 28, 0.92);
   --card-foreground: hsl(0, 0%, 95%);
   --popover: rgba(5, 5, 20, 0.88);
   --popover-foreground: hsl(0, 0%, 95%);
@@ -233,7 +233,7 @@ input, select {
 .dark {
   --background: transparent;
   --foreground: hsl(0, 0%, 95%);
-  --card: rgba(5, 5, 20, 0.50);
+  --card: rgba(5, 5, 28, 0.92);
   --card-foreground: hsl(0, 0%, 95%);
   --popover: rgba(5, 5, 20, 0.88);
   --popover-foreground: hsl(0, 0%, 95%);
@@ -323,10 +323,10 @@ span[data-placeholder],
 .bg-black\/40,
 .bg-slate-800\/50,
 .bg-slate-800\/80 {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(5, 5, 28, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 12px !important;
 }
 
@@ -342,13 +342,13 @@ span[data-placeholder],
 @layer components {
   .neon-border {
     border: 1px solid transparent;
-    background: rgba(0, 0, 0, 0.25) padding-box,
+    background: rgba(5, 5, 28, 0.92) padding-box,
       linear-gradient(90deg,
         hsl(180, 100%, 50%),
         hsl(280, 100%, 50%),
         hsl(180, 100%, 50%)
       ) border-box;
-    border-radius: 32px;
+    border-radius: 16px;
   }
 
   .neon-text {
