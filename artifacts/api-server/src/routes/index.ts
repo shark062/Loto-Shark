@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import lotteryRouter from "./lottery";
 import { Request, Response } from "express";
-import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, getHistoryConfig, computeTopPairs } from "../lib/lotteryData";
+import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, getHistoryConfig, computeTopPairs, getLatestContest } from "../lib/lotteryData";
 import { gerarJogosMaster, gerarDesdobramento } from "../core/sharkEngine";
 import { db, userGamesTable } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
@@ -437,7 +437,8 @@ router.post('/games/generate', async (req: Request, res: Response) => {
       },
       matches:       0,
       prizeWon:      '0',
-      contestNumber: null as number | null,
+      // Concurso-alvo: próximo sorteio após o último concurso conhecido
+      contestNumber: (getLatestContest(lotteryId) > 0 ? getLatestContest(lotteryId) + 1 : null) as number | null,
       status:        'pending',
       hits:          0,
     }));

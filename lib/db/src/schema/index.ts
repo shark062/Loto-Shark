@@ -54,3 +54,63 @@ export const lotteryDrawsCache = pgTable('lottery_draws_cache', {
   fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
   drawCount: integer('draw_count').notNull().default(0),
 });
+
+// ── Fase 1: Contest Snapshots ──────────────────────────────────
+// Armazena snapshots completos de cada geração (para rastreabilidade e backtest)
+export const contestSnapshotsTable = pgTable('contest_snapshots', {
+  id: text('id').primaryKey(),
+  modality: text('modality').notNull(),
+  contestNumber: integer('contest_number').notNull(),
+  contestDate: text('contest_date').notNull(),
+  generatedAt: timestamp('generated_at').notNull().defaultNow(),
+  algorithmVersion: text('algorithm_version').notNull().default('2.1.0'),
+  aiVersion: text('ai_version').notNull().default('ensemble-v1'),
+  generationHash: text('generation_hash').notNull(),
+  gamesCount: integer('games_count').notNull().default(0),
+  strategy: text('strategy').notNull().default('mixed'),
+  statisticsSnapshot: jsonb('statistics_snapshot').$type<Record<string, any>>(),
+  filtersSnapshot: jsonb('filters_snapshot').$type<Record<string, any>>(),
+  backtestResult: jsonb('backtest_result').$type<Record<string, any>>(),
+  pipelineVersion: text('pipeline_version').notNull().default('v1'),
+});
+
+export type ContestSnapshot = typeof contestSnapshotsTable.$inferSelect;
+
+// ── Fase 15: Audit Log (persistência no banco) ────────────────
+// Complementa o audit logger em memória com persistência de eventos críticos
+export const auditLogsTable = pgTable('audit_logs', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+  modality: text('modality'),
+  contestNumber: integer('contest_number'),
+  algorithmVersion: text('algorithm_version'),
+  generationHash: text('generation_hash'),
+  gamesCount: integer('games_count'),
+  score: integer('score'),
+  aiUsed: text('ai_used'),
+  latencyMs: integer('latency_ms'),
+  success: boolean('success').default(true),
+  errorMessage: text('error_message'),
+  metadata: jsonb('metadata').$type<Record<string, any>>(),
+});
+
+export type AuditLog = typeof auditLogsTable.$inferSelect;
+
+// ── Fase 14: Stats Cache (persistência de estatísticas computadas) ──
+export const statsCacheTable = pgTable('stats_cache', {
+  id: serial('id').primaryKey(),
+  lotteryId: text('lottery_id').notNull(),
+  drawCount: integer('draw_count').notNull(),
+  computedAt: timestamp('computed_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+  frequencyMap: jsonb('frequency_map').$type<Record<string, number>>(),
+  delayMap: jsonb('delay_map').$type<Record<string, number>>(),
+  hotNumbers: jsonb('hot_numbers').$type<number[]>(),
+  coldNumbers: jsonb('cold_numbers').$type<number[]>(),
+  warmNumbers: jsonb('warm_numbers').$type<number[]>(),
+  avgSum: numeric('avg_sum'),
+  avgEvens: numeric('avg_evens'),
+  cycleData: jsonb('cycle_data').$type<Record<string, any>>(),
+  coverageScore: integer('coverage_score'),
+});

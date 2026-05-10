@@ -49,6 +49,17 @@ const CACHE_TTL_MS = 45 * 60 * 1000; // 45 minutos
 // Cache em memória como fallback rápido (evita hits desnecessários ao banco)
 const memCache: Record<string, { draws: number[][]; fetchedAt: number }> = {};
 
+// Cache do último concurso conhecido por modalidade (para contestNumber correto)
+const latestContestCache: Record<string, number> = {};
+
+/**
+ * Retorna o número do último concurso conhecido para uma modalidade.
+ * Retorna 0 se ainda não foi buscado (populate via fetchHistoricalDraws).
+ */
+export function getLatestContest(lotteryId: string): number {
+  return latestContestCache[lotteryId] || 0;
+}
+
 export async function fetchLatestDraw(lotteryId: string): Promise<any | null> {
   try {
     const resp = await fetch(`${CAIXA_API}/${lotteryId}`, {
@@ -111,6 +122,8 @@ export async function fetchHistoricalDraws(lotteryId: string, count?: number): P
   }
 
   const latestContest = latest.numero || latest.contestNumber || 0;
+  // Persiste o concurso mais recente para uso externo (contestNumber correto)
+  if (latestContest > 0) latestContestCache[lotteryId] = latestContest;
   const latestNums = latest.dezenas?.map(Number) || latest.listaDezenas?.map(Number) || [];
   const draws: number[][] = latestNums.length > 0 ? [latestNums] : [];
 
