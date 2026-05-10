@@ -35,7 +35,8 @@ const LOTTERY_CONFIG: Record<string, {
   duplasena:  { emoji: '👑', prizeColor: 'text-orange-400',  borderColor: 'border-orange-500/30',   accentGlow: 'hover:shadow-orange-500/10'  },
   timemania:  { emoji: '⚽', prizeColor: 'text-rose-400',    borderColor: 'border-rose-500/30',     accentGlow: 'hover:shadow-rose-500/10'    },
   diadesorte: { emoji: '🍀', prizeColor: 'text-green-400',   borderColor: 'border-green-500/30',    accentGlow: 'hover:shadow-green-500/10'   },
-  supersete:  { emoji: '7️⃣', prizeColor: 'text-red-400',   borderColor: 'border-red-500/30',      accentGlow: 'hover:shadow-red-500/10'     },
+  supersete:       { emoji: '7️⃣', prizeColor: 'text-red-400',    borderColor: 'border-red-500/30',       accentGlow: 'hover:shadow-red-500/10'     },
+  maisMilionaria:  { emoji: '➕',  prizeColor: 'text-amber-400',  borderColor: 'border-amber-500/30',     accentGlow: 'hover:shadow-amber-500/10'   },
 };
 
 function getConfig(id: string) {

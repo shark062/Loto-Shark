@@ -227,9 +227,9 @@ export default function Home() {
     { id: 'lotomania', name: 'Lotomania', icon: '♾️', color: 'from-primary to-neon-cyan' },
     { id: 'duplasena', name: 'Dupla Sena', icon: '👑', color: 'from-accent to-neon-gold' },
     { id: 'supersete', name: 'Super Sete', icon: '🚀', color: 'from-secondary to-neon-purple' },
-    { id: 'milionaria', name: '+Milionária', icon: '➕', color: 'from-neon-gold to-accent' },
+    { id: 'maisMilionaria', name: '+Milionária', icon: '➕', color: 'from-neon-gold to-accent' },
     { id: 'timemania', name: 'Timemania', icon: '🎁', color: 'from-destructive to-neon-pink' },
-    { id: 'diadesore', name: 'Dia de Sorte', icon: '🌟', color: 'from-neon-cyan to-primary' },
+    { id: 'diadesorte', name: 'Dia de Sorte', icon: '🌟', color: 'from-neon-cyan to-primary' },
     { id: 'loteca', name: 'Loteca', icon: '⚽', color: 'from-neon-green to-primary' },
   ];
 

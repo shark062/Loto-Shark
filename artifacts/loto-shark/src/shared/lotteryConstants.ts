@@ -153,9 +153,9 @@ export const LOTTERY_CONFIGS: Record<string, LotteryConfig> = {
     ],
   },
 
-  milionaria: {
-    id: 'milionaria',
-    name: 'milionaria',
+  maisMilionaria: {
+    id: 'maisMilionaria',
+    name: 'maisMilionaria',
     displayName: '+Milionária',
     emoji: '➕',
     minNumbers: 6,

@@ -81,3 +81,15 @@ Motor de geração de jogos em `artifacts/api-server/src/core/sharkEngine.ts`:
 - **Conflito de portas**: Removido o workflow "Start application" redundante. Agora apenas os workflows individuais (`artifacts/api-server: API Server` na porta 8082 e `artifacts/loto-shark: web` na porta 23571) são usados.
 - **Polling excessivo**: O hook `useNextDrawInfo` foi ajustado de 1s para 60s de intervalo de refetch. O countdown é calculado no frontend.
 - **Bug duplicate key**: Corrigida entrada duplicada "lotofacil" em `routes/chat.ts`.
+- **+Milionária adicionada**: `maisMilionaria` adicionada em `lotteryData.ts` (LOTTERIES, HISTORY_CONFIG, trevo-stripping), frontend (`Home.tsx`, `AllLotteriesCard.tsx`, `Generator.tsx`, `lotteryConstants.ts`).
+- **Bug channel_binding=require**: `lib/db/src/index.ts` agora remove o parâmetro `channel_binding=require` da URL de conexão Neon (não suportado pelo driver `pg`). Isso resolvia falhas silenciosas em todos os INSERTs.
+- **Cache TTL e fallback**: TTL do `lottery_draws_cache` aumentado de 45min para 4h. Adicionado fallback ao banco mesmo quando o cache está expirado (garante funcionamento quando a API da Caixa está bloqueada).
+- **Migração do schema Neon**: Tabelas `user_games`, `contest_snapshots`, `audit_logs`, `stats_cache`, `lottery_draws_cache` criadas/migradas no Neon com o schema correto do Drizzle. Dados históricos copiados do banco Replit para o Neon.
+
+## Modalidades Suportadas (9 total)
+
+megasena, lotofacil, quina, lotomania, duplasena, timemania, diadesorte, supersete, **maisMilionaria**
+
+## Nota sobre API da Caixa
+
+A API da Caixa (`servicebus2.caixa.gov.br`) pode ser bloqueada por Cloudflare em ambientes de servidor (retorna HTML). O sistema usa cache de 4h no banco Neon como fallback — os dados persistem entre restarts e são reutilizados quando a API estiver indisponível.

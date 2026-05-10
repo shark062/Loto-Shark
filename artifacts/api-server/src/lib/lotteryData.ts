@@ -5,14 +5,15 @@ const CAIXA_API = 'https://servicebus2.caixa.gov.br/portaldeloterias/api';
 
 // Histórico ótimo por modalidade (quantidade de sorteios para análise confiável)
 const HISTORY_CONFIG: Record<string, { optimal: number; recent: number }> = {
-  lotofacil:  { optimal: 200, recent: 30 }, // sorteia 6x/semana → precisa mais histórico
-  quina:      { optimal: 150, recent: 25 }, // sorteia 6x/semana
-  lotomania:  { optimal: 100, recent: 20 },
-  megasena:   { optimal: 100, recent: 20 }, // sorteia 3x/semana
-  duplasena:  { optimal: 100, recent: 20 },
-  timemania:  { optimal: 80,  recent: 15 },
-  diadesorte: { optimal: 80,  recent: 15 },
-  supersete:  { optimal: 60,  recent: 10 },
+  lotofacil:       { optimal: 200, recent: 30 }, // sorteia 6x/semana → precisa mais histórico
+  quina:           { optimal: 150, recent: 25 }, // sorteia 6x/semana
+  lotomania:       { optimal: 100, recent: 20 },
+  megasena:        { optimal: 100, recent: 20 }, // sorteia 3x/semana
+  duplasena:       { optimal: 100, recent: 20 },
+  timemania:       { optimal: 80,  recent: 15 },
+  diadesorte:      { optimal: 80,  recent: 15 },
+  supersete:       { optimal: 60,  recent: 10 },
+  maisMilionaria:  { optimal: 80,  recent: 15 }, // sorteia 2x/semana (Qua e Sáb)
 };
 
 export function getHistoryConfig(lotteryId: string): { optimal: number; recent: number } {
@@ -20,14 +21,15 @@ export function getHistoryConfig(lotteryId: string): { optimal: number; recent: 
 }
 
 export const LOTTERIES = [
-  { id: 'megasena',   displayName: 'Mega-Sena',    emoji: '💎', minNumbers: 6,  maxNumbers: 15, totalNumbers: 60,  drawDays: ['Terça','Quinta','Sábado'],              drawTime: '21:00', isActive: true },
-  { id: 'lotofacil',  displayName: 'Lotofácil',    emoji: '⭐', minNumbers: 15, maxNumbers: 20, totalNumbers: 25,  drawDays: ['Seg','Ter','Qua','Qui','Sex','Sáb'],    drawTime: '21:00', isActive: true },
-  { id: 'quina',      displayName: 'Quina',        emoji: '🪙', minNumbers: 5,  maxNumbers: 15, totalNumbers: 80,  drawDays: ['Seg','Ter','Qua','Qui','Sex','Sáb'],    drawTime: '21:00', isActive: true },
-  { id: 'lotomania',  displayName: 'Lotomania',    emoji: '♾️', minNumbers: 50, maxNumbers: 50, totalNumbers: 100, drawDays: ['Seg','Qua','Sex'],                      drawTime: '21:00', isActive: true },
-  { id: 'duplasena',  displayName: 'Dupla Sena',   emoji: '👑', minNumbers: 6,  maxNumbers: 15, totalNumbers: 50,  drawDays: ['Ter','Qui','Sáb'],                      drawTime: '21:00', isActive: true },
-  { id: 'timemania',  displayName: 'Timemania',    emoji: '⚽', minNumbers: 10, maxNumbers: 10, totalNumbers: 80,  drawDays: ['Ter','Qui','Sáb'],                      drawTime: '21:00', isActive: true },
-  { id: 'diadesorte', displayName: 'Dia de Sorte', emoji: '🍀', minNumbers: 7,  maxNumbers: 15, totalNumbers: 31,  drawDays: ['Ter','Qui','Sáb'],                      drawTime: '21:00', isActive: true },
-  { id: 'supersete',  displayName: 'Super Sete',   emoji: '7️⃣', minNumbers: 7,  maxNumbers: 7,  totalNumbers: 10,  drawDays: ['Ter','Qui','Sáb'],                      drawTime: '21:00', isActive: true },
+  { id: 'megasena',       displayName: 'Mega-Sena',     emoji: '💎',  minNumbers: 6,  maxNumbers: 15, totalNumbers: 60,  drawDays: ['Terça','Quinta','Sábado'],           drawTime: '21:00', isActive: true },
+  { id: 'lotofacil',      displayName: 'Lotofácil',     emoji: '⭐',  minNumbers: 15, maxNumbers: 20, totalNumbers: 25,  drawDays: ['Seg','Ter','Qua','Qui','Sex','Sáb'], drawTime: '21:00', isActive: true },
+  { id: 'quina',          displayName: 'Quina',         emoji: '🪙',  minNumbers: 5,  maxNumbers: 15, totalNumbers: 80,  drawDays: ['Seg','Ter','Qua','Qui','Sex','Sáb'], drawTime: '21:00', isActive: true },
+  { id: 'lotomania',      displayName: 'Lotomania',     emoji: '♾️', minNumbers: 50, maxNumbers: 50, totalNumbers: 100, drawDays: ['Seg','Qua','Sex'],                   drawTime: '21:00', isActive: true },
+  { id: 'duplasena',      displayName: 'Dupla Sena',    emoji: '👑',  minNumbers: 6,  maxNumbers: 15, totalNumbers: 50,  drawDays: ['Ter','Qui','Sáb'],                   drawTime: '21:00', isActive: true },
+  { id: 'timemania',      displayName: 'Timemania',     emoji: '⚽',  minNumbers: 10, maxNumbers: 10, totalNumbers: 80,  drawDays: ['Ter','Qui','Sáb'],                   drawTime: '21:00', isActive: true },
+  { id: 'diadesorte',     displayName: 'Dia de Sorte',  emoji: '🍀',  minNumbers: 7,  maxNumbers: 15, totalNumbers: 31,  drawDays: ['Ter','Qui','Sáb'],                   drawTime: '21:00', isActive: true },
+  { id: 'supersete',      displayName: 'Super Sete',    emoji: '7️⃣', minNumbers: 7,  maxNumbers: 7,  totalNumbers: 10,  drawDays: ['Ter','Qui','Sáb'],                   drawTime: '21:00', isActive: true },
+  { id: 'maisMilionaria', displayName: '+Milionária',   emoji: '➕',  minNumbers: 6,  maxNumbers: 12, totalNumbers: 50,  drawDays: ['Quarta','Sábado'],                   drawTime: '20:00', isActive: true },
 ];
 
 export interface NumberFrequency {
@@ -44,7 +46,7 @@ export interface NumberFrequency {
   recentWindow?: number;
 }
 
-const CACHE_TTL_MS = 45 * 60 * 1000; // 45 minutos
+const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 horas — sorteios não mudam com frequência
 
 // Cache em memória como fallback rápido (evita hits desnecessários ao banco)
 const memCache: Record<string, { draws: number[][]; fetchedAt: number }> = {};
@@ -80,6 +82,8 @@ async function fetchDraw(lotteryId: string, contestNumber: number): Promise<numb
     if (!resp.ok) return null;
     const data = await resp.json() as any;
     const nums = data.dezenas?.map(Number) || data.listaDezenas?.map(Number) || [];
+    // +Milionária retorna 6 dezenas (1-50) + 2 trevos (1-6) no mesmo array — usa só as 6 dezenas
+    if (lotteryId === 'maisMilionaria' && nums.length > 6) return nums.slice(0, 6);
     return nums.length > 0 ? nums : null;
   } catch {
     return null;
@@ -116,7 +120,18 @@ export async function fetchHistoricalDraws(lotteryId: string, count?: number): P
   // 3. Busca da API da Caixa
   const latest = await fetchLatestDraw(lotteryId);
   if (!latest) {
-    // Retorna o que tiver em memória ou banco, mesmo expirado
+    // Fallback: usa cache do banco mesmo expirado (melhor que nada)
+    try {
+      const { eq } = await import('drizzle-orm');
+      const rows = await db.select().from(lotteryDrawsCache).where(eq(lotteryDrawsCache.lotteryId, lotteryId)).limit(1);
+      if (rows.length > 0 && rows[0].draws.length > 0) {
+        const stale = rows[0];
+        memCache[lotteryId] = { draws: stale.draws, fetchedAt: Date.now() - CACHE_TTL_MS + 60_000 };
+        if (stale.latestContest > 0) latestContestCache[lotteryId] = stale.latestContest;
+        return stale.draws.slice(0, targetCount);
+      }
+    } catch {}
+    // Última opção: memória (mesmo expirada)
     if (mem?.draws?.length) return mem.draws.slice(0, targetCount);
     return [];
   }
@@ -124,7 +139,9 @@ export async function fetchHistoricalDraws(lotteryId: string, count?: number): P
   const latestContest = latest.numero || latest.contestNumber || 0;
   // Persiste o concurso mais recente para uso externo (contestNumber correto)
   if (latestContest > 0) latestContestCache[lotteryId] = latestContest;
-  const latestNums = latest.dezenas?.map(Number) || latest.listaDezenas?.map(Number) || [];
+  let latestNums = latest.dezenas?.map(Number) || latest.listaDezenas?.map(Number) || [];
+  // +Milionária retorna 6 dezenas + 2 trevos no mesmo array — usa só as 6 dezenas
+  if (lotteryId === 'maisMilionaria' && latestNums.length > 6) latestNums = latestNums.slice(0, 6);
   const draws: number[][] = latestNums.length > 0 ? [latestNums] : [];
 
   const targets: number[] = [];

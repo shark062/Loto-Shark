@@ -96,6 +96,7 @@ function getCombinations(arr: number[], k: number): number[][] {
 const LOTTERY_PRICES: Record<string, number> = {
   megasena: 5.00, lotofacil: 3.00, quina: 2.50, lotomania: 3.00,
   duplasena: 2.50, timemania: 3.50, diadesorte: 2.50, supersete: 2.50,
+  maisMilionaria: 6.00,
 };
 
 type GenerateGameForm = z.infer<typeof generateGameSchema>;
