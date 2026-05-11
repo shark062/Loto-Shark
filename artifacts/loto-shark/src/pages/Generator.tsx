@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navigation from "@/components/Navigation";
+import BottomNav from "@/components/BottomNav";
 import { NumberBall } from "@/components/NumberBall";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,66 +17,24 @@ import { useLotteryTypes } from "@/hooks/useLotteryData";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Dice6,
-  Sparkles,
-  Zap,
-  Flame,
-  Snowflake,
-  Sun,
-  Brain,
-  Copy,
-  Share,
-  RefreshCw,
-  Target,
-  Settings,
-  CheckCircle2,
-  Trash2,
-  Shuffle,
-  Info,
-  TrendingUp,
-  BookOpen,
-  Award,
-  RotateCcw,
-  BarChart3,
+  Zap, Brain, Copy, Target, Trash2, Shuffle, ChevronDown, ChevronUp,
+  CheckCircle2, TrendingUp, Flame, Snowflake, Sun, BarChart3,
+  RotateCcw, BookOpen, Award, RefreshCw, Cpu, Sparkles,
 } from "lucide-react";
-import type { UserGame, LotteryType } from "@/types/lottery";
 import {
-  salvarJogos,
-  carregarPesos,
-  ajustarPesos,
-  registrarResultadoOficial,
-  analisarPerformance,
-  estatisticasGerais,
-  resetarMemoria,
-  type SharkPesos,
+  salvarJogos, carregarPesos, ajustarPesos, registrarResultadoOficial,
+  analisarPerformance, estatisticasGerais, resetarMemoria, type SharkPesos,
 } from "@/core/sharkMemory";
 import { gerarRelatorio, getEmojiEstrategia, type Relatorio } from "@/core/sharkAnalytics";
 import { desdobramentoInteligente } from "@/core/sharkDesdobramento";
-import { salvarJogosGerados, toSavedGame } from "@/core/sharkSavedGames";
 import {
-  calcularScorePrecisao,
-  getRankColor,
-  getRankBgColor,
-  getRankEmoji,
-  type PrecisionResult,
-  type FreqEntry,
+  calcularScorePrecisao, getRankColor, getRankBgColor, getRankEmoji,
+  type PrecisionResult, type FreqEntry,
 } from "@/core/sharkPrecisionEngine";
 import { registrarDesempenho } from "@/core/sharkAutoLearning";
-import BettingPlatformIntegration from "@/components/BettingPlatformIntegration";
 import GameInsightsCard from "@/components/GameInsightsCard";
 
-const generateGameSchema = z.object({
-  lotteryId: z.string().min(1, "Selecione uma modalidade"),
-  numbersCount: z.number().min(1).optional(),
-  gamesCount: z.number().min(1).max(100).optional(),
-  strategy: z.enum(['hot', 'cold', 'mixed', 'ai', 'shark', 'manual', 'desdobramento']),
-}).superRefine((data, ctx) => {
-  if (!['manual', 'desdobramento'].includes(data.strategy)) {
-    if (!data.numbersCount || data.numbersCount < 1) ctx.addIssue({ code: 'custom', message: 'Informe a quantidade de dezenas', path: ['numbersCount'] });
-    if (!data.gamesCount  || data.gamesCount  < 1) ctx.addIssue({ code: 'custom', message: 'Informe a quantidade de jogos',   path: ['gamesCount']  });
-  }
-});
-
+/* ─── helpers ─────────────────────────────────────────── */
 function binomial(n: number, k: number): number {
   if (k > n || k < 0) return 0;
   if (k === 0 || k === n) return 1;
@@ -83,1460 +42,853 @@ function binomial(n: number, k: number): number {
   for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
   return Math.round(r);
 }
-
 function getCombinations(arr: number[], k: number): number[][] {
   if (k === 0) return [[]];
   if (arr.length < k) return [];
   const [first, ...rest] = arr;
-  return [
-    ...getCombinations(rest, k - 1).map(c => [first, ...c]),
-    ...getCombinations(rest, k),
-  ];
+  return [...getCombinations(rest, k - 1).map(c => [first, ...c]), ...getCombinations(rest, k)];
 }
-
 const LOTTERY_PRICES: Record<string, number> = {
   megasena: 5.00, lotofacil: 3.00, quina: 2.50, lotomania: 3.00,
   duplasena: 2.50, timemania: 3.50, diadesorte: 2.50, supersete: 2.50,
   maisMilionaria: 6.00,
 };
 
-type GenerateGameForm = z.infer<typeof generateGameSchema>;
+/* ─── loading steps ────────────────────────────────────── */
+const LOADING_STEPS = [
+  "Analisando tendências...",
+  "Calculando cobertura...",
+  "Avaliando entropia...",
+  "Otimizando estrutura...",
+  "Aplicando SharkCore...",
+  "Finalizando melhores combinações...",
+];
+
+/* ─── types ────────────────────────────────────────────── */
+const schema = z.object({
+  lotteryId:    z.string().min(1, "Selecione uma modalidade"),
+  numbersCount: z.number().min(1).optional(),
+  gamesCount:   z.number().min(1).max(100).optional(),
+  strategy:     z.enum(["shark", "manual", "desdobramento"]),
+}).superRefine((data, ctx) => {
+  if (!["manual", "desdobramento"].includes(data.strategy)) {
+    if (!data.numbersCount) ctx.addIssue({ code: "custom", message: "Informe a quantidade de dezenas", path: ["numbersCount"] });
+    if (!data.gamesCount)   ctx.addIssue({ code: "custom", message: "Informe a quantidade de jogos",   path: ["gamesCount"]  });
+  }
+});
+type FormValues = z.infer<typeof schema>;
 
 interface GeneratedGame {
   numbers: number[];
   strategy: string;
   confidence?: number;
-  reasoning?: string;
   sharkScore?: number;
   sharkOrigem?: string;
-  sharkContexto?: {
-    hot: number[];
-    warm: number[];
-    cold: number[];
-    totalCandidatos: number;
-    totalValidados: number;
-  };
+  sharkContexto?: { hot: number[]; warm: number[]; cold: number[]; totalCandidatos: number; totalValidados: number };
   rawGame?: any;
 }
 
+/* ─── score bar ────────────────────────────────────────── */
+function MiniScoreBar({ score }: { score: number }) {
+  const pct  = Math.min(100, Math.max(0, score));
+  const color = pct >= 80 ? "bg-yellow-400" : pct >= 65 ? "bg-emerald-400" : pct >= 50 ? "bg-sky-400" : "bg-slate-500";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs tabular-nums w-7 text-right text-muted-foreground">{pct}</span>
+    </div>
+  );
+}
+
+/* ─── accordion ────────────────────────────────────────── */
+function Accordion({ title, children, icon: Icon }: { title: string; children: React.ReactNode; icon?: React.ComponentType<any> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl border border-white/10 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground/80 hover:text-foreground transition-colors"
+        style={{ background: "rgba(18,24,38,0.7)" }}
+      >
+        <span className="flex items-center gap-2">
+          {Icon && <Icon className="h-4 w-4 text-primary" />}
+          {title}
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+      </button>
+      {open && <div className="px-4 pb-4 pt-2" style={{ background: "rgba(18,24,38,0.5)" }}>{children}</div>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════ */
 export default function Generator() {
-  const [location] = useLocation();
-  const [generatedGames, setGeneratedGames] = useState<GeneratedGame[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [location]            = useLocation();
+  const urlParams             = new URLSearchParams(location.split("?")[1] || "");
+  const preselectedLottery    = urlParams.get("lottery") || "";
+
+  const [generatedGames, setGeneratedGames]   = useState<GeneratedGame[]>([]);
+  const [isGenerating, setIsGenerating]       = useState(false);
+  const [loadingStep, setLoadingStep]         = useState(0);
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
-  const [sharkRawGames, setSharkRawGames] = useState<any[]>([]);
+  const [sharkRawGames, setSharkRawGames]     = useState<any[]>([]);
+  const [pipelineResult, setPipelineResult]   = useState<any>(null);
+  const [precisionMap, setPrecisionMap]       = useState<Record<string, PrecisionResult>>({});
   const [desdobramentoGames, setDesdobramentoGames] = useState<GeneratedGame[]>([]);
-  const [showDesdobramento, setShowDesdobramento] = useState(false);
-  const [sharkPesos, setSharkPesos] = useState<SharkPesos>({ frequencia: 0.5, atraso: 0.3, repeticao: 0.2 });
-  const [sharkStats, setSharkStats] = useState<ReturnType<typeof estatisticasGerais> | null>(null);
-  const [showMemoriaPanel, setShowMemoriaPanel] = useState(false);
-  const [resultInput, setResultInput] = useState("");
-  const [showRegistrar, setShowRegistrar] = useState(false);
+  const [showDesdobramento, setShowDesdobramento]   = useState(false);
   const [desdobramentoLimit, setDesdobramentoLimit] = useState<number | "">("");
-  const [sharkDesdobramentoLimit, setSharkDesdobramentoLimit] = useState<number | "">("");
-  const [relatorio, setRelatorio] = useState<Relatorio>({});
-  const [jogosInteligente, setJogosInteligente] = useState<GeneratedGame[]>([]);
-  const [showInteligente, setShowInteligente] = useState(false);
-  const [precisionMap, setPrecisionMap] = useState<Record<string, PrecisionResult>>({});
-  const [isTurbo, setIsTurbo] = useState(false);
-  const [pipelineResult, setPipelineResult] = useState<any>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [sharkDesdobramentoLimit, setSharkDesdobramentoLimit] = useState<number | "">(20);
+  const [jogosInteligente, setJogosInteligente]     = useState<GeneratedGame[]>([]);
+  const [showInteligente, setShowInteligente]       = useState(false);
+  const [advancedMode, setAdvancedMode]             = useState(false);
+  const [sharkPesos, setSharkPesos]   = useState<SharkPesos>({ frequencia: 0.5, atraso: 0.3, repeticao: 0.2 });
+  const [sharkStats, setSharkStats]   = useState<ReturnType<typeof estatisticasGerais> | null>(null);
+  const [relatorio, setRelatorio]     = useState<Relatorio>({});
+  const [resultInput, setResultInput] = useState("");
+  const [selectedLotteryId, setSelectedLotteryId] = useState(preselectedLottery);
 
-  useEffect(() => {
-    const pesos = ajustarPesos();
-    setSharkPesos(pesos);
-    setSharkStats(estatisticasGerais());
-    setRelatorio(gerarRelatorio());
-  }, []);
+  const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const clearGeneratedGames = () => {
-    setGeneratedGames([]);
-    setSharkRawGames([]);
-    setDesdobramentoGames([]);
-    setShowDesdobramento(false);
-    setPrecisionMap({});
-    setPipelineResult(null);
-    toast({ title: "Jogos Limpos!", description: "Todos os jogos foram removidos." });
-  };
-
-  // Parse URL parameters
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const preselectedLottery = urlParams.get('lottery');
-  const preselectedNumber = urlParams.get('number');
-
-  // Estado para selectedLotteryId - inicializa com valor da URL se disponível
-  const [selectedLotteryId, setSelectedLotteryId] = useState<string>(preselectedLottery || '');
-
-  // Data queries
+  const { toast }         = useToast();
+  const queryClient       = useQueryClient();
   const { data: lotteryTypes, isLoading: lotteriesLoading } = useLotteryTypes();
   const { data: frequenciesRaw } = useQuery({
     queryKey: ["/api/lotteries", selectedLotteryId, "frequency"],
     enabled: !!selectedLotteryId,
     select: (data: any) => {
-      const arr = Array.isArray(data) ? data : (data?.frequencies ?? []);
+      const arr  = Array.isArray(data) ? data : (data?.frequencies ?? []);
       const meta = Array.isArray(data) ? {} : (data?.meta ?? {});
       return { frequencies: arr, meta };
     },
   });
   const frequencies = frequenciesRaw?.frequencies ?? [];
-  const frequencyMeta = frequenciesRaw?.meta ?? {};
 
-  // Form setup
-  const form = useForm<GenerateGameForm>({
-    resolver: zodResolver(generateGameSchema),
-    defaultValues: {
-      lotteryId: preselectedLottery || '',
-      numbersCount: undefined,
-      gamesCount: undefined,
-      strategy: 'shark' as const,
-    },
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { lotteryId: preselectedLottery, numbersCount: undefined, gamesCount: undefined, strategy: "shark" },
   });
 
-  // Atualiza o estado local selectedLotteryId sempre que o valor do formulário mudar
   useEffect(() => {
-    const subscription = form.watch((value) => {
-      if (value.lotteryId !== undefined && value.lotteryId !== selectedLotteryId) {
-        setSelectedLotteryId(value.lotteryId);
-      }
-    });
-    return () => subscription.unsubscribe();
+    const sub = form.watch(v => { if (v.lotteryId && v.lotteryId !== selectedLotteryId) setSelectedLotteryId(v.lotteryId); });
+    return () => sub.unsubscribe();
   }, [selectedLotteryId]);
 
+  useEffect(() => { if (selectedLotteryId) { form.setValue("numbersCount", undefined as any); setSelectedNumbers([]); } }, [selectedLotteryId]);
 
-  // Limpar campo dezenas quando trocar de modalidade
   useEffect(() => {
-    if (selectedLotteryId) {
-      form.setValue('numbersCount', undefined as any);
-    }
-  }, [selectedLotteryId]);
+    setSharkPesos(ajustarPesos());
+    setSharkStats(estatisticasGerais());
+    setRelatorio(gerarRelatorio());
+  }, []);
 
   const selectedLottery = lotteryTypes?.find(l => l.id === selectedLotteryId);
 
-  // Não preenche automaticamente - deixa em branco para o usuário escolher
-  useEffect(() => {
-    if (selectedLottery) {
-      // Remove o preenchimento automático
-      // form.setValue('numbersCount', selectedLottery.minNumbers);
-    }
-  }, [selectedLottery]);
+  /* ── loading animation ─────────────────────────────── */
+  const startLoading = () => {
+    setLoadingStep(0);
+    loadingIntervalRef.current = setInterval(() => {
+      setLoadingStep(prev => (prev + 1) % LOADING_STEPS.length);
+    }, 900);
+  };
+  const stopLoading = () => {
+    if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+  };
 
-  // Generate games mutation — SharkCore v3
-  const generateGamesMutation = useMutation({
-    mutationFn: async (data: GenerateGameForm) => {
-      const payload: any = {
+  /* ── mutations ─────────────────────────────────────── */
+  const generateMutation = useMutation({
+    mutationFn: async (data: FormValues) => {
+      const res = await apiRequest("POST", "/api/v3/generate", {
         lotteryId: data.lotteryId,
-        dezenas:  data.numbersCount,
-        quantity: data.gamesCount,
-      };
-      const response = await apiRequest('POST', '/api/v3/generate', payload);
-      return response.json();
+        dezenas:   data.numbersCount,
+        quantity:  data.gamesCount,
+      });
+      return res.json();
     },
-    onSuccess: (responseData) => {
-      const data = responseData.games || responseData;
-      setPipelineResult(responseData.pipeline || null);
-
-      setGeneratedGames(data.map((game: any) => ({
-        numbers: game.selectedNumbers || game.numbers,
-        strategy: game.strategy || 'shark',
-        confidence: game.confidence,
-        reasoning: game.reasoning,
-        sharkScore: game.sharkScore,
-        sharkOrigem: game.sharkOrigem,
-        sharkContexto: game.sharkContexto,
-        rawGame: game,
+    onSuccess: (resp) => {
+      const games = resp.games || resp;
+      setPipelineResult(resp.pipeline || null);
+      setGeneratedGames(games.map((g: any) => ({
+        numbers: g.selectedNumbers || g.numbers,
+        strategy: g.strategy || "shark",
+        confidence: g.confidence,
+        sharkScore: g.sharkScore,
+        sharkOrigem: g.sharkOrigem,
+        sharkContexto: g.sharkContexto,
+        rawGame: g,
       })));
-
-      // ── Score de precisão (motor frontend) ──
-      const freqsRaw = frequenciesRaw?.frequencies ?? [];
-      const freqEntries: FreqEntry[] = freqsRaw.map((f: any) => ({
-        number: f.number,
-        frequency: f.frequency,
-        temperature: f.temperature,
+      const freqEntries: FreqEntry[] = (frequenciesRaw?.frequencies ?? []).map((f: any) => ({
+        number: f.number, frequency: f.frequency, temperature: f.temperature,
       }));
-      const modalityId = data[0]?.lotteryId || form.getValues('lotteryId');
-      const lotteryObj = lotteryTypes?.find(l => l.id === modalityId);
-      const totalNums = lotteryObj?.totalNumbers ?? 60;
+      const modalityId = games[0]?.lotteryId || form.getValues("lotteryId");
+      const totalNums  = lotteryTypes?.find(l => l.id === modalityId)?.totalNumbers ?? 60;
       const newPrecision: Record<string, PrecisionResult> = {};
-      data.forEach((game: any, idx: number) => {
-        const nums = (game.selectedNumbers || game.numbers) as number[];
-        const pr = calcularScorePrecisao(nums, freqEntries, modalityId, totalNums);
-        newPrecision[String(idx)] = pr;
-        registrarDesempenho(game.sharkOrigem || game.strategy || 'shark', pr.score);
+      games.forEach((g: any, i: number) => {
+        const nums = (g.selectedNumbers || g.numbers) as number[];
+        const pr   = calcularScorePrecisao(nums, freqEntries, modalityId, totalNums);
+        newPrecision[String(i)] = pr;
+        registrarDesempenho(g.sharkOrigem || g.strategy || "shark", pr.score);
       });
       setPrecisionMap(newPrecision);
-
-      setSharkRawGames(data);
+      setSharkRawGames(games);
       setDesdobramentoGames([]);
       setShowDesdobramento(false);
-      setShowRegistrar(false);
-      setResultInput("");
       salvarJogos(
-        data.map((g: any) => ({ jogo: g.selectedNumbers || g.numbers, score: g.sharkScore || 0, origem: g.sharkOrigem || 'master' })),
-        data[0]?.lotteryId || form.getValues('lotteryId'),
+        games.map((g: any) => ({ jogo: g.selectedNumbers || g.numbers, score: g.sharkScore || 0, origem: g.sharkOrigem || "master" })),
+        games[0]?.lotteryId || form.getValues("lotteryId"),
       );
       setSharkStats(estatisticasGerais());
       queryClient.invalidateQueries({ queryKey: ["/api/games"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/games"] });
-      toast({
-        title: "Jogos Gerados!",
-        description: `${data.length} jogo(s) gerado(s) e salvos com sucesso.`,
-      });
+      toast({ title: `${games.length} jogo(s) gerado(s)`, description: "Salvo automaticamente." });
     },
-    onError: (error) => {
-      toast({
-        title: "Erro ao Gerar Jogos",
-        description: "Não foi possível gerar os jogos. Tente novamente.",
-        variant: "destructive",
-      });
-    },
+    onError: () => toast({ title: "Erro ao gerar jogos", description: "Tente novamente.", variant: "destructive" }),
   });
 
   const desdobramentoMutation = useMutation({
     mutationFn: async ({ lotteryId, jogos, limite }: { lotteryId: string; jogos: any[]; limite: number }) => {
-      const response = await apiRequest('POST', '/api/games/desdobramento', { lotteryId, jogos, limite });
-      return response.json();
+      const res = await apiRequest("POST", "/api/games/desdobramento", { lotteryId, jogos, limite });
+      return res.json();
     },
     onSuccess: (data) => {
-      const combos: GeneratedGame[] = (data.games || []).map((game: any) => ({
-        numbers: game.selectedNumbers,
-        strategy: 'desdobramento-shark',
-        confidence: game.confidence,
-        reasoning: game.reasoning,
+      const combos: GeneratedGame[] = (data.games || []).map((g: any) => ({
+        numbers: g.selectedNumbers, strategy: "desdobramento-shark",
+        confidence: g.confidence, sharkScore: g.sharkScore,
       }));
       setDesdobramentoGames(combos);
       setShowDesdobramento(true);
-      toast({
-        title: `🔀 Desdobramento Shark!`,
-        description: `${data.totalCombinacoes} combinações geradas de ${data.poolUsado?.length || 0} dezenas únicas.`,
-      });
+      toast({ title: `${data.totalCombinacoes} combinações geradas!` });
     },
-    onError: () => {
-      toast({ title: "Erro no Desdobramento", description: "Não foi possível gerar o desdobramento.", variant: "destructive" });
-    },
+    onError: () => toast({ title: "Erro no desdobramento", variant: "destructive" }),
   });
 
-  const onSubmit = async (data: GenerateGameForm) => {
-    // Modo manual
-    if (data.strategy === 'manual') {
-      if (selectedNumbers.length === 0) {
-        toast({ title: "Selecione números", description: "Selecione pelo menos 1 número.", variant: "destructive" });
-        return;
-      }
-      setGeneratedGames([{ numbers: selectedNumbers, strategy: 'manual' }]);
-      toast({ title: "Jogo criado!", description: "Seus números foram selecionados com sucesso." });
+  /* ── submit ────────────────────────────────────────── */
+  const onSubmit = async (data: FormValues) => {
+    if (data.strategy === "manual") {
+      if (selectedNumbers.length === 0) { toast({ title: "Selecione os números", variant: "destructive" }); return; }
+      setGeneratedGames([{ numbers: selectedNumbers, strategy: "manual" }]);
       return;
     }
-
-    // Modo desdobramento
-    if (data.strategy === 'desdobramento') {
+    if (data.strategy === "desdobramento") {
       if (!selectedLottery) { toast({ title: "Selecione a modalidade", variant: "destructive" }); return; }
       const min = selectedLottery.minNumbers;
       if (selectedNumbers.length < min) {
-        toast({ title: "Selecione mais números", description: `Mínimo: ${min} dezenas para ${selectedLottery.displayName}.`, variant: "destructive" });
-        return;
+        toast({ title: "Selecione mais números", description: `Mínimo: ${min} dezenas.`, variant: "destructive" }); return;
       }
-      const limit = typeof desdobramentoLimit === 'number' && desdobramentoLimit > 0 ? desdobramentoLimit : undefined;
-      const combos = getCombinations(selectedNumbers, min);
-      const limited = limit ? combos.slice(0, limit) : combos;
-      if (limited.length === 0) {
-        toast({ title: "Nenhuma combinação gerada", description: "Selecione mais dezenas ou ajuste o limite.", variant: "destructive" });
-        return;
-      }
-      setGeneratedGames(limited.map(c => ({ numbers: c, strategy: 'desdobramento' })));
-      toast({ title: "Desdobramento gerado! 🔀", description: `${limited.length} de ${combos.length} combinações possíveis geradas.` });
+      const combos  = getCombinations(selectedNumbers, min);
+      const limited = typeof desdobramentoLimit === "number" ? combos.slice(0, desdobramentoLimit) : combos;
+      setGeneratedGames(limited.map(c => ({ numbers: c, strategy: "desdobramento" })));
+      toast({ title: `${limited.length} combinações geradas` });
       return;
     }
-
-    // Modo automático: gerar jogos com IA
     setIsGenerating(true);
+    startLoading();
     try {
-      await generateGamesMutation.mutateAsync(data);
+      await generateMutation.mutateAsync(data);
     } finally {
+      stopLoading();
       setIsGenerating(false);
     }
   };
 
-  const getNumberFrequency = (number: number) => {
-    return (frequencies as any[]).find((f: any) => f.number === number);
+  const clearAll = () => {
+    setGeneratedGames([]); setSharkRawGames([]); setDesdobramentoGames([]);
+    setShowDesdobramento(false); setPrecisionMap({}); setPipelineResult(null);
   };
-
-  const toggleNumber = (number: number) => {
-    if (!selectedLottery) return;
-
-    if (selectedNumbers.includes(number)) {
-      setSelectedNumbers(selectedNumbers.filter(n => n !== number));
-    } else {
-      setSelectedNumbers([...selectedNumbers, number].sort((a, b) => a - b));
-    }
-  };
-
-  const clearSelection = () => {
-    setSelectedNumbers([]);
-  };
-
-  // Limpar seleção ao trocar de modalidade
-  useEffect(() => {
-    setSelectedNumbers([]);
-  }, [selectedLotteryId]);
-
-  const getStrategyInfo = (strategy: string) => {
-    const strategies = {
-      hot: {
-        icon: <Flame className="h-4 w-4 text-destructive" />,
-        emoji: '🔥',
-        name: 'Números Quentes',
-        description: 'Foca nos números que mais saem',
-        color: 'text-destructive',
-      },
-      cold: {
-        icon: <Snowflake className="h-4 w-4 text-primary" />,
-        emoji: '❄️',
-        name: 'Números Frios',
-        description: 'Foca nos números que menos saem',
-        color: 'text-primary',
-      },
-      mixed: {
-        icon: <Sun className="h-4 w-4 text-amber-500" />,
-        emoji: '♨️',
-        name: 'Estratégia Mista',
-        description: '40% quentes, 30% mornos, 30% frios',
-        color: 'text-amber-500',
-      },
-      ai: {
-        icon: <Brain className="h-4 w-4 text-secondary" />,
-        emoji: '🤖',
-        name: 'IA Avançada',
-        description: 'Análise inteligente com padrões',
-        color: 'text-secondary',
-      },
-      shark: {
-        icon: <Brain className="h-4 w-4 text-primary" />,
-        emoji: '',
-        name: 'Predições com IA',
-        description: 'Motor autônomo: simula milhares de combinações e seleciona as melhores com aprendizado contínuo',
-        color: 'text-primary',
-      },
-      manual: {
-        icon: <Target className="h-4 w-4 text-accent" />,
-        emoji: '🎯',
-        name: 'Escolha Manual',
-        description: 'Selecione seus próprios números',
-        color: 'text-accent',
-      },
-      desdobramento: {
-        icon: <Shuffle className="h-4 w-4 text-emerald-400" />,
-        emoji: '🔀',
-        name: 'Desdobramento',
-        description: 'Escolha mais dezenas e gere todas as combinações possíveis',
-        color: 'text-emerald-400',
-      },
-    };
-    return strategies[strategy as keyof typeof strategies] || strategies.mixed;
-  };
-
-  const getNumberStyle = (number: number, strategy: string) => {
-    const baseStyle = "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold";
-    const colorStyle = "text-white"; // White numbers as requested
-
-    if (strategy === 'hot') {
-      return `${baseStyle} ${colorStyle} bg-red-500`;
-    } else if (strategy === 'cold') {
-      return `${baseStyle} ${colorStyle} bg-blue-500`;
-    } else if (strategy === 'mixed') {
-      const mod = number % 3;
-      if (mod === 0) return `${baseStyle} ${colorStyle} bg-orange-500`; // Warm
-      if (mod === 1) return `${baseStyle} ${colorStyle} bg-red-500`; // Hot
-      return `${baseStyle} ${colorStyle} bg-blue-500`; // Cold
-    } else if (strategy === 'ai') {
-      return `${baseStyle} ${colorStyle} bg-purple-500`;
-    } else if (strategy === 'shark') {
-      return `${baseStyle} ${colorStyle} bg-yellow-500`;
-    }
-    return `${baseStyle} ${colorStyle} bg-gray-500`; // Default neutral color
-  };
-
 
   const copyToClipboard = (numbers: number[]) => {
-    const text = numbers.join(' - ');
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copiado!",
-      description: "Números copiados para a área de transferência.",
-    });
+    navigator.clipboard.writeText(numbers.join(" - "));
+    toast({ title: "Copiado!" });
   };
 
+  const getNumberFrequency = (n: number) => (frequencies as any[]).find((f: any) => f.number === n);
+  const toggleNumber = (n: number) => {
+    if (!selectedLottery) return;
+    setSelectedNumbers(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n].sort((a, b) => a - b));
+  };
 
+  const strategy    = form.watch("strategy");
+  const lotteryId   = form.watch("lotteryId");
+  const isAdvanced  = strategy === "manual" || strategy === "desdobramento";
+  const hasGames    = generatedGames.length > 0;
+  const price       = LOTTERY_PRICES[selectedLotteryId] ?? 3.00;
+
+  /* ─────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen text-foreground" style={{ background: "#0B0F19" }}>
       <Navigation />
 
-      <main className="container mx-auto px-4 py-4">
-        <div className="text-center mb-4">
-          <div>
-            <h2 className="text-2xl font-bold neon-text text-primary mb-1" data-testid="generator-title">
-              Gerador Inteligente 🔮
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Gere jogos com estratégias baseadas em IA e análise estatística
-            </p>
+      <main className="max-w-lg mx-auto px-4 pt-4 pb-32">
+
+        {/* ── Header ───────────────────────────────────── */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 mb-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs font-semibold tracking-widest uppercase text-primary/80">SharkCore v3.0</span>
           </div>
+          <h1 className="text-[26px] font-bold leading-tight text-white">
+            Gerador Inteligente
+          </h1>
+          <p className="text-[15px] text-muted-foreground mt-1">
+            IA unificada com 14 engines de análise
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          {/* Generator Form */}
-          <Card className="neon-border bg-black/20">
-            <CardHeader>
-              <CardTitle className="text-primary flex items-center">
-                <Settings className="h-5 w-5 mr-2" />
-                Configurações do Jogo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {/* Lottery Selection */}
-                <div>
-                  <Label className="flex items-center text-sm font-medium text-foreground mb-2">
-                    <Target className="h-4 w-4 mr-2 text-primary" />
-                    Modalidade
-                  </Label>
-                  <Select
-                    value={form.watch('lotteryId')}
-                    onValueChange={(value) => {
-                      form.setValue('lotteryId', value);
-                      // O useEffect acima irá capturar essa mudança e atualizar setSelectedLotteryId
-                    }}
-                    disabled={lotteriesLoading}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione a modalidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {lotteryTypes?.map((lottery) => (
-                        <SelectItem key={lottery.id} value={lottery.id}>
-                          {lottery.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.lotteryId && (
-                    <p className="text-destructive text-sm mt-1">{form.formState.errors.lotteryId.message}</p>
-                  )}
-                </div>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-                {/* Numbers Count — hidden for manual/desdobramento modes */}
-                {form.watch('strategy') !== 'manual' && form.watch('strategy') !== 'desdobramento' && (
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <Label className="flex items-center text-sm font-medium text-foreground mb-2">
-                        <Dice6 className="h-4 w-4 mr-2 text-accent" />
-                        Dezenas
-                      </Label>
-                      <Input
-                        type="number"
-                        placeholder=""
-                        {...form.register('numbersCount', { valueAsNumber: true })}
-                        className="bg-input border-border"
-                        data-testid="numbers-count-input"
-                      />
-                    </div>
+          {/* ── Config card ──────────────────────────────── */}
+          <div
+            className="rounded-2xl border border-white/10 p-5 space-y-4"
+            style={{ background: "#121826" }}
+          >
+            {/* Modalidade */}
+            <div className="space-y-2">
+              <Label className="text-[14px] font-semibold text-foreground/90 flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Modalidade
+              </Label>
+              <Select
+                value={form.watch("lotteryId")}
+                onValueChange={v => form.setValue("lotteryId", v)}
+                disabled={lotteriesLoading}
+              >
+                <SelectTrigger className="h-12 text-[15px] rounded-xl" style={{ background: "#0B0F19", border: "1px solid rgba(255,255,255,0.12)" }}>
+                  <SelectValue placeholder="Selecione a modalidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {lotteryTypes?.map(l => (
+                    <SelectItem key={l.id} value={l.id}>{l.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.lotteryId && (
+                <p className="text-destructive text-xs mt-1">{form.formState.errors.lotteryId.message}</p>
+              )}
+            </div>
 
-                    <div>
-                      <Label className="flex items-center text-sm font-medium text-foreground mb-2">
-                        <Copy className="h-4 w-4 mr-2 text-secondary" />
-                        Qtd. Jogos
-                      </Label>
-                      <Input
-                        type="number"
-                        placeholder="Máx. 100"
-                        min={1}
-                        max={100}
-                        {...form.register('gamesCount', { valueAsNumber: true })}
-                        className="bg-input border-border"
-                        data-testid="games-count-input"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Strategy — single fixed option */}
-                <Card className="bg-primary/20 border-primary/50 shadow-lg shadow-primary/20">
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 rounded-full bg-primary/30">
-                          <Brain className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-primary">Predições com IA</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Motor autônomo: simula milhares de combinações e seleciona as melhores com aprendizado contínuo
-                          </p>
-                        </div>
-                      </div>
-                      <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center shrink-0 ml-3">
-                        <div className="w-2 h-2 rounded-full bg-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Manual Number Selection */}
-                {form.watch('strategy') === 'manual' && selectedLottery && (
-                  <Card className="bg-black/20">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-accent flex items-center">
-                          <Target className="h-4 w-4 mr-2" />
-                          Cartela - {selectedLottery.displayName}
-                        </h5>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {selectedNumbers.length} números
-                          </Badge>
-                          {selectedNumbers.length > 0 && (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Grid de números - Cartela estilo mapa de calor */}
-                      <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 mb-3 border border-white/20 shadow-lg">
-                        <div className="number-grid flex flex-wrap gap-1 justify-center">
-                          {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
-                            const number = i + 1;
-                            const isSelected = selectedNumbers.includes(number);
-                            const freq = getNumberFrequency(number);
-                            const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
-                            return (
-                              <NumberBall
-                                key={number}
-                                number={number}
-                                size="xs"
-                                onClick={() => toggleNumber(number)}
-                                selected={isSelected}
-                                temperature={temp}
-                              />
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Números selecionados */}
-                      {selectedNumbers.length > 0 && (
-                        <div className="space-y-2 border-t border-primary/30 pt-2 mt-2">
-                          <div className="bg-gradient-to-r from-black/50 to-black/30 rounded-xl p-2.5 border border-primary/20">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Seus números selecionados:
-                              </p>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={clearSelection}
-                                className="h-6 text-xs text-muted-foreground hover:text-destructive px-2"
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Limpar
-                              </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {selectedNumbers.map((num) => {
-                                const freq = getNumberFrequency(num);
-                                const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
-                                return (
-                                  <NumberBall key={num} number={num} size="xs" selected temperature={temp} />
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Legenda compacta */}
-                      <div className="bg-black/20 rounded-lg p-2 mt-2 border border-white/10">
-                        <div className="flex justify-center gap-4 text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded bg-red-500 shadow-sm shadow-red-500/50"></div>
-                            <span className="font-medium">🔥 Quentes</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded bg-yellow-500 shadow-sm shadow-yellow-500/50"></div>
-                            <span className="font-medium">♨️ Mornos</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded bg-blue-500 shadow-sm shadow-blue-500/50"></div>
-                            <span className="font-medium">❄️ Frios</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Desdobramento Number Selection */}
-                {form.watch('strategy') === 'desdobramento' && selectedLottery && (() => {
-                  const min = selectedLottery.minNumbers;
-                  const n = selectedNumbers.length;
-                  const combos = n >= min ? binomial(n, min) : 0;
-                  const price = LOTTERY_PRICES[selectedLottery.id] || 3.00;
-                  return (
-                    <Card className="bg-black/20 border-emerald-500/30">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="font-medium text-emerald-400 flex items-center">
-                            <Shuffle className="h-4 w-4 mr-2" />
-                            Cartela – {selectedLottery.displayName}
-                          </h5>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-400">
-                              {n} dezenas
-                            </Badge>
-                            {selectedNumbers.length > 0 && (
-                              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}
-                                className="h-6 text-xs text-muted-foreground hover:text-destructive px-2">
-                                <Trash2 className="h-3 w-3 mr-1" />Limpar
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Quantity input */}
-                        <div className="mb-3 flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-2.5">
-                          <label className="text-xs text-emerald-300 font-semibold whitespace-nowrap flex items-center gap-1.5">
-                            <Shuffle className="h-3.5 w-3.5" />
-                            Quantidade de desdobramentos:
-                          </label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={combos > 0 ? combos : 9999}
-                            placeholder="Qtd"
-                            value={desdobramentoLimit}
-                            onChange={e => {
-                              const v = e.target.value;
-                              if (v === "") setDesdobramentoLimit("");
-                              else setDesdobramentoLimit(Math.max(1, parseInt(v) || 1));
-                            }}
-                            className="h-7 text-sm w-24 text-center bg-black/40 border-emerald-500/30 text-emerald-200"
-                          />
-                          {n >= min && combos > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              de {combos} possíveis
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Combo preview banner */}
-                        {n < min ? (
-                          <div className="rounded-xl p-2.5 mb-3 border text-center text-sm font-semibold bg-white/5 border-white/10 text-muted-foreground">
-                            Selecione pelo menos {min} dezenas (ainda faltam {min - n})
-                          </div>
-                        ) : combos > 0 && (
-                          <div className="rounded-xl p-2.5 mb-3 border text-center text-sm font-semibold bg-emerald-500/10 border-emerald-500/30 text-emerald-300">
-                            {(() => {
-                              const effectiveLimit = typeof desdobramentoLimit === 'number' && desdobramentoLimit > 0 ? desdobramentoLimit : combos;
-                              const jogos = Math.min(effectiveLimit, combos);
-                              return `🔀 ${n} dezenas → ${jogos} jogo${jogos !== 1 ? 's' : ''} gerados • Custo est. R$ ${(jogos * price).toFixed(2).replace('.', ',')}`;
-                            })()}
-                          </div>
-                        )}
-
-                        {/* Number grid */}
-                        <div className="bg-gradient-to-br from-white/10 to-white/5 rounded-xl p-3 mb-3 border border-white/20">
-                          <div className="number-grid flex flex-wrap gap-1 justify-center">
-                            {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
-                              const number = i + 1;
-                              const isSel = selectedNumbers.includes(number);
-                              const freq = getNumberFrequency(number);
-                              const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
-                              return (
-                                <NumberBall
-                                  key={number}
-                                  number={number}
-                                  size="xs"
-                                  onClick={() => toggleNumber(number)}
-                                  selected={isSel}
-                                  temperature={temp}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Selected numbers pills */}
-                        {selectedNumbers.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {selectedNumbers.map(num => {
-                              const freq = getNumberFrequency(num);
-                              const temp = freq?.temperature as "hot" | "warm" | "cold" | undefined;
-                              return (
-                                <NumberBall key={num} number={num} size="xs" selected temperature={temp} />
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Legend */}
-                        <div className="bg-black/20 rounded-lg p-2 border border-white/10">
-                          <div className="flex justify-center gap-4 text-xs">
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-500"></div><span>🔥 Quentes</span></div>
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-500"></div><span>♨️ Mornos</span></div>
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-500"></div><span>❄️ Frios</span></div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })()}
-
-                {/* Strategy Details */}
-                {form.watch('strategy') && form.watch('strategy') !== 'manual' && form.watch('strategy') !== 'desdobramento' && (
-                  <Card className="bg-black/20">
-                    <CardContent className="p-3">
-                      <h5 className="font-medium text-accent mb-2 flex items-center">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Como Funciona: {getStrategyInfo(form.watch('strategy')).name}
-                      </h5>
-                      <div className="space-y-2">
-                        {form.watch('strategy') === 'hot' && (
-                          <div className="text-sm text-muted-foreground">
-                            <div className="flex items-center mb-2">
-                              <Flame className="h-4 w-4 mr-2 text-destructive" />
-                              <span className="font-medium">Foco em números frequentes</span>
-                            </div>
-                            <ul className="space-y-1 ml-6">
-                              <li>• Seleciona números que saíram mais vezes recentemente</li>
-                              <li>• Baseado na tendência de repetição</li>
-                              <li>• Ideal para quem acredita em "sequências quentes"</li>
-                            </ul>
-                          </div>
-                        )}
-                        {form.watch('strategy') === 'cold' && (
-                          <div className="text-sm text-muted-foreground">
-                            <div className="flex items-center mb-2">
-                              <Snowflake className="h-4 w-4 mr-2 text-primary" />
-                              <span className="font-medium">Foco em números atrasados</span>
-                            </div>
-                            <ul className="space-y-1 ml-6">
-                              <li>• Seleciona números que não saem há mais tempo</li>
-                              <li>• Baseado na teoria de compensação</li>
-                              <li>• Ideal para quem acredita que "tudo se equilibra"</li>
-                            </ul>
-                          </div>
-                        )}
-                        {form.watch('strategy') === 'mixed' && (
-                          <div className="text-sm text-muted-foreground">
-                            <div className="flex items-center mb-2">
-                              <Sun className="h-4 w-4 mr-2 text-amber-500" />
-                              <span className="font-medium">Estratégia equilibrada</span>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 mb-3">
-                              <div className="text-center p-2 bg-black/20 rounded">
-                                <div className="font-bold text-destructive">40%</div>
-                                <div className="text-xs">🔥 Quentes</div>
-                              </div>
-                              <div className="text-center p-2 bg-amber-500/10 rounded">
-                                <div className="font-bold text-amber-500">30%</div>
-                                <div className="text-xs">♨️ Mornos</div>
-                              </div>
-                              <div className="text-center p-2 bg-black/20 rounded">
-                                <div className="font-bold text-primary">30%</div>
-                                <div className="text-xs">❄️ Frios</div>
-                              </div>
-                            </div>
-                            <p className="text-xs">Combina diferentes temperaturas para balancear riscos e oportunidades</p>
-                          </div>
-                        )}
-                        {form.watch('strategy') === 'ai' && (
-                          <div className="text-sm text-muted-foreground">
-                            <div className="flex items-center mb-2">
-                              <Brain className="h-4 w-4 mr-2 text-secondary" />
-                              <span className="font-medium">Análise estatística multivariável</span>
-                            </div>
-                            <ul className="space-y-1 ml-6">
-                              <li>• Frequência real dos últimos 30 sorteios da Caixa</li>
-                              <li>• Pesos iguais: frequência recente + atraso acumulado</li>
-                              <li>• Classifica dezenas em quentes, mornos e frias</li>
-                              <li>• Valida paridade e sequências antes de incluir</li>
-                            </ul>
-                          </div>
-                        )}
-                        {form.watch('strategy') === 'shark' && (
-                          <div className="text-sm text-muted-foreground">
-                            <div className="flex items-center mb-2">
-                              <Brain className="h-4 w-4 mr-2 text-primary" />
-                              <span className="font-medium text-primary">Predições com IA</span>
-                            </div>
-                            <ul className="space-y-1 ml-6">
-                              <li>• 🔬 Analisa os 30 últimos sorteios reais da Caixa</li>
-                              <li>• 🏆 Gera e valida milhares de combinações</li>
-                              <li>• 📊 Pontua cada jogo por frequência + atraso + repetição</li>
-                              <li>• ✅ Valida paridade e sequências para cada modalidade</li>
-                              <li>• 🧠 Aprende com os resultados anteriores registrados</li>
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Generate Button */}
-                <Button
-                  type="submit"
-                  disabled={isGenerating || !selectedLotteryId}
-                  className="w-full border text-white bg-primary/20 hover:bg-primary/30 border-primary/50"
-                  data-testid="generate-games-button"
-                >
-                  {isGenerating ? (
-                    <><RefreshCw className="h-5 w-5 mr-2 animate-spin" />GERANDO PREDIÇÕES...</>
-                  ) : (
-                    <><Brain className="h-5 w-5 mr-2" />GERAR PREDIÇÕES COM IA</>
-                  )}
-                </Button>
-              </form>
-
-              {/* ── Modo Turbo: Gerar 10 Jogos ELITE ─────────────────── */}
-              <div className="mt-3">
-                <Button
-                  type="button"
-                  disabled={isTurbo || !selectedLotteryId}
-                  onClick={async () => {
-                    if (!selectedLotteryId) {
-                      toast({ title: "Selecione a modalidade", variant: "destructive" });
-                      return;
-                    }
-                    const lotteryObj = lotteryTypes?.find(l => l.id === selectedLotteryId);
-                    if (!lotteryObj) return;
-                    setIsTurbo(true);
-                    const freqsRaw = frequenciesRaw?.frequencies ?? [];
-                    const freqEntries: FreqEntry[] = freqsRaw.map((f: any) => ({
-                      number: f.number, frequency: f.frequency, temperature: f.temperature,
-                    }));
-                    const eliteGames: GeneratedGame[] = [];
-                    const elitePrecision: Record<string, PrecisionResult> = {};
-                    let attempts = 0;
-                    const MAX_ATTEMPTS = 8;
-                    while (eliteGames.length < 10 && attempts < MAX_ATTEMPTS) {
-                      attempts++;
-                      try {
-                        const payload = {
-                          lotteryId: selectedLotteryId,
-                          numbersCount: lotteryObj.minNumbers,
-                          gamesCount: 5,
-                          strategy: 'shark',
-                          pesos: carregarPesos(),
-                        };
-                        const res = await apiRequest('POST', '/api/games/generate', payload);
-                        const data = await res.json();
-                        for (const game of data) {
-                          if (eliteGames.length >= 10) break;
-                          const pr = calcularScorePrecisao(
-                            game.selectedNumbers,
-                            freqEntries,
-                            selectedLotteryId,
-                            lotteryObj.totalNumbers,
-                          );
-                          if (pr.score >= 80) {
-                            const idx = eliteGames.length;
-                            eliteGames.push({
-                              numbers: game.selectedNumbers,
-                              strategy: game.strategy || 'shark',
-                              confidence: game.confidence,
-                              reasoning: game.reasoning,
-                              sharkScore: game.sharkScore,
-                              sharkOrigem: game.sharkOrigem,
-                              sharkContexto: game.sharkContexto,
-                              rawGame: game,
-                            });
-                            elitePrecision[String(idx)] = pr;
-                            registrarDesempenho(game.sharkOrigem || 'shark', pr.score);
-                          }
-                        }
-                      } catch { break; }
-                    }
-                    setIsTurbo(false);
-                    if (eliteGames.length === 0) {
-                      toast({ title: "Nenhum jogo ELITE encontrado", description: "Tente novamente ou selecione outra modalidade.", variant: "destructive" });
-                      return;
-                    }
-                    setGeneratedGames(eliteGames);
-                    setPrecisionMap(elitePrecision);
-                    setSharkRawGames(eliteGames.map(g => g.rawGame).filter(Boolean));
-                    queryClient.invalidateQueries({ queryKey: ["/api/games"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/user/games"] });
-                    toast({
-                      title: `🏆 Modo Turbo — ${eliteGames.length} Jogos ELITE!`,
-                      description: `Score mínimo 80 garantido em todos os jogos.`,
-                    });
-                  }}
-                  className="w-full border text-yellow-300 bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/40"
-                  data-testid="turbo-generate-button"
-                >
-                  {isTurbo ? (
-                    <><RefreshCw className="h-5 w-5 mr-2 animate-spin" />BUSCANDO JOGOS ELITE...</>
-                  ) : (
-                    <><Zap className="h-5 w-5 mr-2" />MODO TURBO — 10 JOGOS ELITE 🏆</>
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center mt-1">
-                  Gera apenas jogos com score de precisão ≥ 80
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Painel de Análise — exibido quando há jogos gerados */}
-          {generatedGames.length > 0 && (() => {
-            const ctx = (generatedGames[0] as any)?.rawGame?.sharkContexto || (generatedGames[0] as any)?.sharkContexto;
-            if (!ctx) return null;
-            return (
-              <Card className="neon-border bg-black/20 border-primary/30">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-primary text-sm flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    Análise dos {ctx.sorteiosAnalisados || 30} Últimos Sorteios — {ctx.estrategia}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 p-4 pt-0">
-                  {/* Dezenas Quentes */}
-                  {ctx.hot?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-red-400 mb-1.5 flex items-center gap-1">
-                        <Flame className="h-3.5 w-3.5" /> Dezenas Quentes — alta freq. recente ({ctx.hot.length})
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {ctx.hot.map((n: number) => (
-                          <NumberBall key={n} number={n} size="xs" temperature="hot" />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Dezenas Frias */}
-                  {ctx.cold?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-blue-400 mb-1.5 flex items-center gap-1">
-                        <Snowflake className="h-3.5 w-3.5" /> Dezenas Frias — maior atraso ({ctx.cold.length})
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {ctx.cold.map((n: number) => (
-                          <NumberBall key={n} number={n} size="xs" temperature="cold" />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {/* Dezenas Mornos */}
-                  {ctx.warm?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-yellow-400 mb-1.5 flex items-center gap-1">
-                        <Sun className="h-3.5 w-3.5" /> Dezenas Mornos ({ctx.warm.length})
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {ctx.warm.map((n: number) => (
-                          <NumberBall key={n} number={n} size="xs" temperature="warm" />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground pt-1 border-t border-white/10">
-                    <span>📊 {ctx.sorteiosAnalisados || 30} sorteios analisados</span>
-                    <span>✅ {ctx.totalValidados?.toLocaleString('pt-BR')} jogos validados</span>
-                    {ctx.pesosUsados && (
-                      <span>
-                        🔥 freq {Math.round((ctx.pesosUsados.frequencia || 0) * 100)}%
-                        · ❄️ atraso {Math.round((ctx.pesosUsados.atraso || 0) * 100)}%
-                        · 🔄 rep {Math.round((ctx.pesosUsados.repeticao || 0) * 100)}%
+            {/* Dezenas + Quantidade */}
+            {!isAdvanced && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-semibold text-foreground/90">
+                    Dezenas
+                    {selectedLottery && (
+                      <span className="text-muted-foreground font-normal ml-1 text-xs">
+                        (min {selectedLottery.minNumbers})
                       </span>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })()}
-
-          {/* SharkCore Insights Panel */}
-          {pipelineResult && generatedGames.length > 0 && (
-            <GameInsightsCard
-              pipeline={pipelineResult}
-              game={generatedGames[0]?.rawGame}
-            />
-          )}
-
-          {/* Generated Games */}
-          <div className="space-y-3">
-            <Card className="neon-border bg-black/20">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-accent flex items-center">
-                  <Dice6 className="h-5 w-5 mr-2" />
-                  Jogos Gerados
-                </CardTitle>
-                {generatedGames.length > 0 && (
-                  <div className="flex gap-2">
-                  </div>
-                )}
-              </CardHeader>
-            <CardContent className="space-y-3 p-4">
-              {generatedGames.length > 0 ? (
-                generatedGames.map((game, index) => {
-                  const strategyInfo = getStrategyInfo(game.strategy);
-
-                  return (
-                    <Card key={index} className="bg-black/20 border-border/50">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-primary">
-                              Jogo #{index + 1}
-                            </span>
-                            <Badge variant="secondary" className={`${strategyInfo.color} text-xs`}>
-                              {strategyInfo.emoji} {strategyInfo.name}
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(game.numbers)}
-                            data-testid={`copy-game-${index}-button`}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {game.numbers.map((number) => (
-                            <NumberBall
-                              key={number}
-                              number={number}
-                              size="sm"
-                              data-testid={`game-${index}-number-${number}`}
-                            />
-                          ))}
-                        </div>
-
-                        {/* ── Score de Precisão Shark ─────────────────── */}
-                        {precisionMap[String(index)] && (() => {
-                          const pr = precisionMap[String(index)];
-                          return (
-                            <div className={`rounded-lg border px-3 py-2 mb-2 ${getRankBgColor(pr.rank)}`}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold flex items-center gap-1">
-                                  🐋 SCORE SHARK:
-                                  <span className={`text-base font-extrabold ml-1 ${getRankColor(pr.rank)}`}>
-                                    {pr.score}
-                                  </span>
-                                </span>
-                                <span className={`text-xs font-bold ${getRankColor(pr.rank)}`}>
-                                  {getRankEmoji(pr.rank)} {pr.rank}
-                                </span>
-                              </div>
-                              {pr.reasons.length > 0 && (
-                                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                                  {pr.reasons.slice(0, 3).map((r, i) => (
-                                    <span key={i} className="text-xs text-white/60">✔ {r}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {game.strategy === 'shark' ? (
-                          <div className="space-y-1 mt-1">
-                            <div className="text-xs text-yellow-400/80 flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className="flex items-center gap-1">
-                                <Zap className="h-3 w-3" />
-                                Origem: <span className="font-semibold capitalize">{game.sharkOrigem || '—'}</span>
-                              </span>
-                              {game.sharkScore !== undefined && (
-                                <span className="text-muted-foreground">• score {game.sharkScore}</span>
-                              )}
-                              {game.confidence && (
-                                <span className="text-muted-foreground">• confiança {Math.round(game.confidence * 100)}%</span>
-                              )}
-                            </div>
-                            {game.sharkContexto && (
-                              <div className="text-xs text-muted-foreground">
-                                {game.sharkContexto.totalCandidatos} candidatos → {game.sharkContexto.totalValidados} validados
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-muted-foreground">
-                            Estratégia: {strategyInfo.description}
-                            {game.confidence && ` • Confiança: ${Math.round(game.confidence * 100)}%`}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              ) : (
-                <div className="text-center text-muted-foreground py-12">
-                  <Dice6 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">Nenhum jogo gerado ainda</p>
-                  <p className="text-sm">Configure os parâmetros e clique em "Gerar Jogos"</p>
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder={selectedLottery?.minNumbers?.toString() ?? "—"}
+                    {...form.register("numbersCount", { valueAsNumber: true })}
+                    className="h-12 text-[15px] rounded-xl text-center"
+                    style={{ background: "#0B0F19", border: "1px solid rgba(255,255,255,0.12)" }}
+                  />
+                  {form.formState.errors.numbersCount && (
+                    <p className="text-destructive text-xs">{form.formState.errors.numbersCount.message}</p>
+                  )}
                 </div>
-              )}
-            </CardContent>
-            </Card>
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-semibold text-foreground/90">
+                    Jogos
+                    <span className="text-muted-foreground font-normal ml-1 text-xs">(máx 100)</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="5"
+                    min={1}
+                    max={100}
+                    {...form.register("gamesCount", { valueAsNumber: true })}
+                    className="h-12 text-[15px] rounded-xl text-center"
+                    style={{ background: "#0B0F19", border: "1px solid rgba(255,255,255,0.12)" }}
+                  />
+                </div>
+              </div>
+            )}
 
-            {/* Botão Desdobramento Shark */}
-            {sharkRawGames.length > 0 && (
-              <Card className="neon-border bg-black/20 border-yellow-500/40">
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-sm font-semibold text-yellow-400 flex items-center gap-2">
-                    <Shuffle className="h-4 w-4" />
-                    Desdobramento Automático Shark
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Combina os melhores jogos e gera variações otimizadas. Defina quantas quer gerar:
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs text-yellow-300 font-semibold whitespace-nowrap">
-                      Quantidade:
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={500}
-                      placeholder="Qtd"
-                      value={sharkDesdobramentoLimit}
-                      onChange={e => {
-                        const v = e.target.value;
-                        if (v === "") setSharkDesdobramentoLimit("");
-                        else setSharkDesdobramentoLimit(Math.max(1, Math.min(500, parseInt(v) || 1)));
-                      }}
-                      className="h-7 text-sm w-24 text-center bg-black/40 border-yellow-500/30 text-yellow-200"
-                    />
-                    <span className="text-xs text-muted-foreground">máximo 500</span>
+            {/* Advanced toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !advancedMode;
+                setAdvancedMode(next);
+                if (!next) form.setValue("strategy", "shark");
+              }}
+              className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {advancedMode ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              Modo avançado (manual / desdobramento)
+            </button>
+
+            {advancedMode && (
+              <div className="space-y-4 pt-1">
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-semibold text-foreground/90">Modo</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["manual", "desdobramento"] as const).map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => form.setValue("strategy", s)}
+                        className={`rounded-xl py-2.5 px-3 text-[13px] font-semibold border transition-all duration-200 text-left ${
+                          strategy === s
+                            ? "border-primary/60 bg-primary/10 text-primary"
+                            : "border-white/10 bg-white/5 text-muted-foreground hover:border-white/20"
+                        }`}
+                      >
+                        {s === "manual" ? "Escolha Manual" : "Desdobramento"}
+                      </button>
+                    ))}
                   </div>
-                  <Button
-                    onClick={() => {
-                      const lotteryId = form.getValues('lotteryId');
-                      const limite = typeof sharkDesdobramentoLimit === 'number' && sharkDesdobramentoLimit > 0
-                        ? sharkDesdobramentoLimit : 500;
-                      desdobramentoMutation.mutate({ lotteryId, jogos: sharkRawGames, limite });
-                    }}
-                    disabled={desdobramentoMutation.isPending || sharkDesdobramentoLimit === ""}
-                    className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/50 text-yellow-300"
-                  >
-                    {desdobramentoMutation.isPending ? (
-                      <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Gerando...</>
-                    ) : (
-                      <><Shuffle className="h-4 w-4 mr-2" />
-                        Gerar {typeof sharkDesdobramentoLimit === 'number' ? sharkDesdobramentoLimit : '...'} Desdobramentos 🔀
+                </div>
+
+                {/* Number picker */}
+                {isAdvanced && selectedLottery && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-foreground/80">
+                        Cartela — {selectedLottery.displayName}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">{selectedNumbers.length} selecionados</Badge>
+                        {selectedNumbers.length > 0 && (
+                          <button type="button" onClick={() => setSelectedNumbers([])} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {strategy === "desdobramento" && (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Limite combinações:</span>
+                          <Input
+                            type="number" min={1}
+                            value={desdobramentoLimit}
+                            onChange={e => setDesdobramentoLimit(e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value) || 1))}
+                            className="h-8 text-sm w-24 text-center"
+                            style={{ background: "#0B0F19" }}
+                          />
+                          {selectedNumbers.length >= selectedLottery.minNumbers && (
+                            <span className="text-xs text-emerald-400">
+                              {binomial(selectedNumbers.length, selectedLottery.minNumbers).toLocaleString("pt-BR")} possíveis
+                            </span>
+                          )}
+                        </div>
+                        {selectedNumbers.length < selectedLottery.minNumbers && (
+                          <p className="text-xs text-amber-400">
+                            Selecione pelo menos {selectedLottery.minNumbers} dezenas
+                            (faltam {selectedLottery.minNumbers - selectedNumbers.length})
+                          </p>
+                        )}
                       </>
                     )}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Desdobramento Inteligente (frontend) */}
-            {sharkRawGames.length > 0 && selectedLottery && (
-              <Card className="neon-border bg-black/20 border-cyan-500/40">
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-sm font-semibold text-cyan-400 flex items-center gap-2">
-                    <Brain className="h-4 w-4" />
-                    Desdobramento Inteligente
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Analisa os {sharkRawGames.length} jogos e cria variações baseadas nos números mais frequentes entre eles.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      const min = selectedLottery!.minNumbers;
-                      const resultado = desdobramentoInteligente(sharkRawGames, min, 50, 20);
-                      if (resultado.total === 0) {
-                        toast({ title: "Sem dados suficientes", description: "Gere mais jogos Shark primeiro.", variant: "destructive" });
-                        return;
-                      }
-                      const games: GeneratedGame[] = resultado.combinacoes.map(c => ({
-                        numbers: c,
-                        strategy: "desdobramento-inteligente",
-                      }));
-                      setJogosInteligente(games);
-                      setShowInteligente(true);
-                      toast({
-                        title: "🧠 Desdobramento Inteligente!",
-                        description: `${resultado.total} combinações de ${resultado.poolUsado.length} dezenas-chave.`,
-                      });
-                    }}
-                    className="w-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300"
-                  >
-                    <Brain className="h-4 w-4 mr-2" />
-                    Gerar Desdobramento Inteligente 🧠
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                    <div className="rounded-xl p-3 border border-white/10" style={{ background: "rgba(11,15,25,0.8)" }}>
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {Array.from({ length: selectedLottery.totalNumbers }, (_, i) => {
+                          const n    = i + 1;
+                          const freq = getNumberFrequency(n);
+                          return (
+                            <NumberBall
+                              key={n} number={n} size="xs"
+                              onClick={() => toggleNumber(n)}
+                              selected={selectedNumbers.includes(n)}
+                              temperature={freq?.temperature as any}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
 
-            {/* Jogos do Desdobramento Inteligente */}
-            {showInteligente && jogosInteligente.length > 0 && (
-              <Card className="neon-border bg-black/20 border-cyan-500/30">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-cyan-400 flex items-center text-base">
-                    <Brain className="h-5 w-5 mr-2" />
-                    Desdobramento Inteligente ({jogosInteligente.length} combinações)
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowInteligente(false)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-2 p-4 max-h-96 overflow-y-auto">
-                  {jogosInteligente.map((game, index) => (
-                    <Card key={index} className="bg-black/20 border-cyan-500/20">
-                      <CardContent className="p-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-cyan-400">#{index + 1}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(game.numbers)}>
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {game.numbers.map(n => (
-                            <NumberBall key={n} number={n} size="xs" />
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Shark Learning Memory Panel */}
-            {sharkRawGames.length > 0 && (
-              <Card className="neon-border bg-black/20 border-cyan-500/30">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-cyan-400 flex items-center text-base">
-                      <Brain className="h-5 w-5 mr-2" />
-                      Shark Memory &amp; Aprendizado
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-cyan-400 hover:text-cyan-300"
-                      onClick={() => setShowMemoriaPanel(v => !v)}
-                    >
-                      {showMemoriaPanel ? "Ocultar" : "Ver Detalhes"}
-                    </Button>
+                    <div className="flex justify-center gap-5 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Quentes</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block" />Mornos</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />Frios</span>
+                    </div>
                   </div>
-                </CardHeader>
-                {showMemoriaPanel && (
-                  <CardContent className="space-y-4">
-                    {/* Current Weights */}
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wider">Pesos Aprendidos</p>
-                      <div className="space-y-2">
-                        {[
-                          { label: "Frequência", value: sharkPesos.frequencia, color: "bg-yellow-400" },
-                          { label: "Atraso", value: sharkPesos.atraso, color: "bg-orange-400" },
-                          { label: "Repetição", value: sharkPesos.repeticao, color: "bg-cyan-400" },
-                        ].map(p => (
-                          <div key={p.label} className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground w-24">{p.label}</span>
-                            <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${p.color}`}
-                                style={{ width: `${Math.round(p.value * 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-white w-10 text-right">{Math.round(p.value * 100)}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    {sharkStats && sharkStats.totalComAcertos > 0 && (
-                      <div className="grid grid-cols-1 gap-3">
-                        {[
-                          { icon: BookOpen, label: "Com resultado", value: sharkStats.totalComAcertos },
-                          { icon: Award, label: "Média acertos", value: sharkStats.mediaGeral.toFixed(1) },
-                          { icon: TrendingUp, label: "Maior acerto", value: sharkStats.melhorAcerto },
-                        ].map(s => (
-                          <div key={s.label} className="bg-white/5 rounded-lg p-2 text-center">
-                            <s.icon className="h-4 w-4 mx-auto mb-1 text-cyan-400" />
-                            <p className="text-lg font-bold text-white">{s.value}</p>
-                            <p className="text-xs text-muted-foreground">{s.label}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Painel de Desempenho por Estratégia */}
-                    {Object.keys(relatorio).length > 0 && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wider">
-                          Desempenho por Estratégia
-                        </p>
-                        <div className="space-y-1">
-                          {Object.entries(relatorio)
-                            .sort((a, b) => b[1].media - a[1].media)
-                            .map(([estrategia, dados]) => (
-                              <div
-                                key={estrategia}
-                                className="flex items-center justify-between text-xs bg-white/5 rounded px-2 py-1.5"
-                              >
-                                <span className="text-white/80 capitalize">
-                                  {getEmojiEstrategia(estrategia)}{" "}
-                                  {estrategia.replace(/_/g, " ")}
-                                </span>
-                                <span className="text-cyan-300 font-mono tabular-nums">
-                                  média {dados.media.toFixed(1)} | 🏆 {dados.melhor} | {dados.jogos}j
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Registrar Resultado */}
-                    <div className="border border-white/10 rounded-lg p-3 space-y-2">
-                      <p className="text-xs font-semibold text-white flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-400" />
-                        Registrar Resultado Oficial
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Digite as dezenas sorteadas (separadas por vírgula). O Shark calculará os acertos automaticamente.
-                      </p>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Ex: 5,12,23,34,45,58"
-                          value={resultInput}
-                          onChange={e => setResultInput(e.target.value)}
-                          className="h-8 text-sm bg-white/5 border-white/20 flex-1"
-                        />
-                        <Button
-                          size="sm"
-                          className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 text-xs whitespace-nowrap"
-                          disabled={!resultInput.trim()}
-                          onClick={() => {
-                            const dezenas = resultInput.split(/[,\s]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
-                            if (dezenas.length === 0) {
-                              toast({ title: "Formato inválido", description: "Digite as dezenas separadas por vírgula.", variant: "destructive" });
-                              return;
-                            }
-                            const lotteryId = form.getValues('lotteryId');
-                            const res = registrarResultadoOficial(dezenas, lotteryId);
-                            const novosP = ajustarPesos();
-                            setSharkPesos(novosP);
-                            setSharkStats(estatisticasGerais());
-                            setRelatorio(gerarRelatorio());
-                            setResultInput("");
-                            toast({ title: "Resultado registrado!", description: `${res.registrados} jogo(s) avaliado(s). Melhor: ${res.melhorAcerto} acerto(s). Pesos ajustados!` });
-                          }}
-                        >
-                          Registrar
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Reset */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full text-xs"
-                      onClick={() => {
-                        if (window.confirm("Apagar toda a memória do Shark? Essa ação não pode ser desfeita.")) {
-                          resetarMemoria();
-                          setSharkPesos({ frequencia: 0.5, atraso: 0.3, repeticao: 0.2 });
-                          setSharkStats(estatisticasGerais());
-                          toast({ title: "Memória resetada", description: "O Shark voltará aos pesos padrão." });
-                        }
-                      }}
-                    >
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Resetar memória do Shark
-                    </Button>
-                  </CardContent>
                 )}
-              </Card>
-            )}
-
-            {/* Desdobramento Games */}
-            {showDesdobramento && desdobramentoGames.length > 0 && (
-              <Card className="neon-border bg-black/20 border-yellow-500/30">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-yellow-400 flex items-center text-base">
-                    <Shuffle className="h-5 w-5 mr-2" />
-                    Desdobramento Shark ({desdobramentoGames.length} combinações)
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowDesdobramento(false)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-2 p-4 max-h-96 overflow-y-auto">
-                  {desdobramentoGames.map((game, index) => (
-                    <Card key={index} className="bg-black/20 border-yellow-500/20">
-                      <CardContent className="p-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-yellow-400">#{index + 1}</span>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(game.numbers)}>
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {game.numbers.map(n => (
-                            <NumberBall key={n} number={n} size="xs" />
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Betting Platform Integration */}
-            {generatedGames.length > 0 && selectedLotteryId && (
-              <BettingPlatformIntegration
-                lotteryId={selectedLotteryId}
-                games={generatedGames.map(g => ({ numbers: g.numbers }))}
-              />
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Quick Actions */}
-        {generatedGames.length > 0 && (
-          <div className="text-center mt-4">
-            <div className="inline-flex gap-3">
-              <Button
-                onClick={() => window.location.href = '/heat-map'}
-                variant="outline"
-                className="border-primary text-primary hover:bg-black/20"
-                data-testid="view-heatmap-button"
-              >
-                <Flame className="h-4 w-4 mr-2" />
-                Ver Mapa de Calor
-              </Button>
+          {/* ── CTA button ───────────────────────────────── */}
+          <button
+            type="submit"
+            disabled={isGenerating || !lotteryId}
+            className="w-full h-16 rounded-2xl text-[17px] font-bold tracking-wide transition-all duration-300 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: isGenerating
+                ? "rgba(0,229,168,0.15)"
+                : "linear-gradient(135deg, #00c896 0%, #007aff 100%)",
+              boxShadow: !isGenerating && lotteryId ? "0 0 32px rgba(0,200,150,0.35), 0 4px 20px rgba(0,0,0,0.4)" : "none",
+              color: "#fff",
+            }}
+          >
+            {isGenerating ? (
+              <span className="flex flex-col items-center justify-center gap-1">
+                <span className="flex items-center gap-2 text-[15px]">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  {LOADING_STEPS[loadingStep]}
+                </span>
+                <span className="flex gap-1">
+                  {LOADING_STEPS.map((_, i) => (
+                    <span
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                      style={{ background: i === loadingStep ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.25)" }}
+                    />
+                  ))}
+                </span>
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                {isAdvanced && strategy === "manual"  ? <Target className="h-5 w-5" /> :
+                 isAdvanced && strategy === "desdobramento" ? <Shuffle className="h-5 w-5" /> :
+                 <Zap className="h-5 w-5" />}
+                {isAdvanced && strategy === "manual"  ? "CONFIRMAR JOGO MANUAL" :
+                 isAdvanced && strategy === "desdobramento" ? "GERAR DESDOBRAMENTO" :
+                 "INICIAR ANÁLISE SHARKCORE"}
+              </span>
+            )}
+          </button>
 
-              <Button
-                onClick={() => window.location.href = '/results'}
-                className="bg-black/20 hover:bg-primary/20"
-                data-testid="view-results-button"
-              >
-                <Target className="h-4 w-4 mr-2" />
-                Verificar Resultados
-              </Button>
+          {/* ── Como funciona (accordeon) ─────────────────── */}
+          <Accordion title="Como funciona o SharkCore?" icon={Sparkles}>
+            <div className="space-y-2 text-[14px] text-muted-foreground">
+              {[
+                { icon: BarChart3, text: "Analisa os últimos 30 sorteios reais da Caixa" },
+                { icon: Brain,     text: "Gera e valida milhares de combinações candidatas" },
+                { icon: Cpu,       text: "14 engines ativos: entropia, correlação, distribuição, tendência..." },
+                { icon: CheckCircle2, text: "HyperScore classifica cada jogo de 0 a 1000" },
+                { icon: TrendingUp, text: "Seleciona apenas os jogos com maior ROI esperado" },
+              ].map(({ icon: Icon, text }, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <span>{text}</span>
+                </div>
+              ))}
             </div>
+          </Accordion>
+        </form>
+
+        {/* ═══ RESULTS ════════════════════════════════════ */}
+        {hasGames && (
+          <div className="mt-6 space-y-4">
+
+            {/* ── GameInsights ─────────────────────────────── */}
+            {pipelineResult && (
+              <GameInsightsCard
+                pipeline={pipelineResult}
+                game={generatedGames[0]?.rawGame}
+              />
+            )}
+
+            {/* ── Games list header ────────────────────────── */}
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-[17px] font-bold text-white">
+                Jogos Gerados
+                <span className="ml-2 text-sm font-normal text-muted-foreground">({generatedGames.length})</span>
+              </h2>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar
+              </button>
+            </div>
+
+            {/* ── Individual games ─────────────────────────── */}
+            <div className="space-y-3">
+              {generatedGames.map((game, index) => {
+                const pr = precisionMap[String(index)];
+                return (
+                  <div
+                    key={index}
+                    className="rounded-2xl border border-white/10 p-4 space-y-3"
+                    style={{ background: "#121826" }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-bold text-primary">Jogo #{index + 1}</span>
+                        {pr && (
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${getRankBgColor(pr.rank)}`}>
+                            {getRankEmoji(pr.rank)} {pr.rank}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(game.numbers)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        Copiar
+                      </button>
+                    </div>
+
+                    {/* Numbers */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {game.numbers.map(n => {
+                        const freq = getNumberFrequency(n);
+                        return <NumberBall key={n} number={n} size="sm" temperature={freq?.temperature as any} />;
+                      })}
+                    </div>
+
+                    {/* FORÇA DO JOGO */}
+                    {pr && (
+                      <div className="space-y-1.5 pt-1 border-t border-white/8">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            Força do Jogo
+                          </span>
+                          <span className={`text-[15px] font-black tabular-nums ${getRankColor(pr.rank)}`}>
+                            {pr.score}/100
+                          </span>
+                        </div>
+                        <MiniScoreBar score={pr.score} />
+                        {pr.reasons.length > 0 && (
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
+                            {pr.reasons.slice(0, 4).map((r, i) => (
+                              <span key={i} className="text-[11px] text-emerald-400/80 flex items-center gap-1">
+                                <CheckCircle2 className="h-2.5 w-2.5 shrink-0" /> {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Shark metadata (compact) */}
+                    {game.sharkOrigem && (
+                      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground pt-0.5">
+                        <span>Origem: <span className="text-foreground/70 capitalize">{game.sharkOrigem}</span></span>
+                        {game.sharkScore != null && <span>Score: <span className="text-foreground/70">{game.sharkScore}</span></span>}
+                        {game.confidence   != null && <span>Confiança: <span className="text-foreground/70">{Math.round(game.confidence * 100)}%</span></span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Quick actions ─────────────────────────────── */}
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => window.location.href = "/heat-map"}
+                className="flex-1 h-11 rounded-xl border border-white/15 text-[13px] font-semibold text-foreground/80 hover:border-primary/40 hover:text-primary transition-all"
+                style={{ background: "rgba(18,24,38,0.8)" }}
+              >
+                <Flame className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+                Mapa de Calor
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.href = "/results"}
+                className="flex-1 h-11 rounded-xl border border-white/15 text-[13px] font-semibold text-foreground/80 hover:border-primary/40 hover:text-primary transition-all"
+                style={{ background: "rgba(18,24,38,0.8)" }}
+              >
+                <Target className="h-4 w-4 inline mr-1.5 -mt-0.5" />
+                Verificar Resultados
+              </button>
+            </div>
+
+            {/* ── Desdobramento automático (accordion) ─────── */}
+            {sharkRawGames.length > 0 && (
+              <Accordion title="Desdobramento Automático Shark" icon={Shuffle}>
+                <div className="space-y-3">
+                  <p className="text-[13px] text-muted-foreground">
+                    Gera variações otimizadas combinando os melhores jogos gerados.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Quantidade:</span>
+                    <Input
+                      type="number" min={1} max={500}
+                      value={sharkDesdobramentoLimit}
+                      onChange={e => setSharkDesdobramentoLimit(e.target.value === "" ? "" : Math.min(500, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="h-8 text-sm w-24 text-center"
+                      style={{ background: "#0B0F19" }}
+                    />
+                    <span className="text-xs text-muted-foreground">máx. 500</span>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const limite = typeof sharkDesdobramentoLimit === "number" ? sharkDesdobramentoLimit : 500;
+                      desdobramentoMutation.mutate({ lotteryId: form.getValues("lotteryId"), jogos: sharkRawGames, limite });
+                    }}
+                    disabled={desdobramentoMutation.isPending || sharkDesdobramentoLimit === ""}
+                    className="w-full bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary"
+                  >
+                    {desdobramentoMutation.isPending ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Gerando...</> : <><Shuffle className="h-4 w-4 mr-2" />Gerar Desdobramentos</>}
+                  </Button>
+
+                  {showDesdobramento && desdobramentoGames.length > 0 && (
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      {desdobramentoGames.map((g, i) => (
+                        <div key={i} className="rounded-xl border border-white/8 p-2.5" style={{ background: "#0B0F19" }}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-semibold text-primary/80">#{i + 1}</span>
+                            <button type="button" onClick={() => copyToClipboard(g.numbers)} className="text-muted-foreground hover:text-foreground">
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-1">{g.numbers.map(n => <NumberBall key={n} number={n} size="xs" />)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Desdobramento Inteligente */}
+                  {selectedLottery && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const min = selectedLottery!.minNumbers;
+                        const res = desdobramentoInteligente(sharkRawGames, min, 50, 20);
+                        if (res.total === 0) { toast({ title: "Gere mais jogos primeiro", variant: "destructive" }); return; }
+                        setJogosInteligente(res.combinacoes.map(c => ({ numbers: c, strategy: "desdobramento-inteligente" })));
+                        setShowInteligente(true);
+                        toast({ title: `${res.total} combinações inteligentes geradas` });
+                      }}
+                      className="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300"
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Desdobramento Inteligente
+                    </Button>
+                  )}
+
+                  {showInteligente && jogosInteligente.length > 0 && (
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      {jogosInteligente.map((g, i) => (
+                        <div key={i} className="rounded-xl border border-cyan-500/15 p-2.5" style={{ background: "#0B0F19" }}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-semibold text-cyan-400/80">#{i + 1}</span>
+                            <button type="button" onClick={() => copyToClipboard(g.numbers)} className="text-muted-foreground hover:text-foreground">
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-1">{g.numbers.map(n => <NumberBall key={n} number={n} size="xs" />)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Accordion>
+            )}
+
+            {/* ── Shark Memory (accordion) ──────────────────── */}
+            {sharkRawGames.length > 0 && (
+              <Accordion title="Shark Memory & Aprendizado" icon={Brain}>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase tracking-wider">Pesos Aprendidos</p>
+                    <div className="space-y-2">
+                      {[
+                        { label: "Frequência", value: sharkPesos.frequencia, color: "bg-yellow-400" },
+                        { label: "Atraso",     value: sharkPesos.atraso,     color: "bg-orange-400" },
+                        { label: "Repetição",  value: sharkPesos.repeticao,  color: "bg-primary"    },
+                      ].map(p => (
+                        <div key={p.label} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-20">{p.label}</span>
+                          <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${p.color}`} style={{ width: `${Math.round(p.value * 100)}%` }} />
+                          </div>
+                          <span className="text-xs text-white w-9 text-right">{Math.round(p.value * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {sharkStats && sharkStats.totalComAcertos > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { icon: BookOpen,  label: "Registrados", value: sharkStats.totalComAcertos },
+                        { icon: Award,     label: "Média",       value: sharkStats.mediaGeral.toFixed(1) },
+                        { icon: TrendingUp, label: "Melhor",     value: sharkStats.melhorAcerto },
+                      ].map(s => (
+                        <div key={s.label} className="rounded-xl p-2.5 text-center" style={{ background: "#0B0F19" }}>
+                          <s.icon className="h-4 w-4 mx-auto mb-1 text-primary" />
+                          <p className="text-base font-bold text-white">{s.value}</p>
+                          <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Registrar resultado */}
+                  <div className="rounded-xl border border-white/10 p-3 space-y-2" style={{ background: "#0B0F19" }}>
+                    <p className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      Registrar Resultado Oficial
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Ex: 5,12,23,34,45,58"
+                        value={resultInput}
+                        onChange={e => setResultInput(e.target.value)}
+                        className="h-8 text-sm flex-1"
+                        style={{ background: "rgba(255,255,255,0.04)" }}
+                      />
+                      <Button
+                        type="button" size="sm"
+                        className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs"
+                        disabled={!resultInput.trim()}
+                        onClick={() => {
+                          const dezenas = resultInput.split(/[,\s]+/).map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+                          if (!dezenas.length) { toast({ title: "Formato inválido", variant: "destructive" }); return; }
+                          const res = registrarResultadoOficial(dezenas, form.getValues("lotteryId"));
+                          setSharkPesos(ajustarPesos());
+                          setSharkStats(estatisticasGerais());
+                          setRelatorio(gerarRelatorio());
+                          setResultInput("");
+                          toast({ title: `${res.registrados} jogo(s) avaliado(s) · Melhor: ${res.melhorAcerto} acertos` });
+                        }}
+                      >Registrar</Button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="w-full text-xs text-red-400/70 hover:text-red-400 transition-colors flex items-center justify-center gap-1.5 py-1"
+                    onClick={() => {
+                      if (window.confirm("Apagar toda a memória do Shark?")) {
+                        resetarMemoria();
+                        setSharkPesos({ frequencia: 0.5, atraso: 0.3, repeticao: 0.2 });
+                        setSharkStats(estatisticasGerais());
+                        toast({ title: "Memória resetada" });
+                      }
+                    }}
+                  >
+                    <RotateCcw className="h-3 w-3" /> Resetar memória do Shark
+                  </button>
+                </div>
+              </Accordion>
+            )}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!hasGames && !isGenerating && (
+          <div className="text-center py-12 space-y-2">
+            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: "rgba(0,229,168,0.08)" }}>
+              <Zap className="h-7 w-7 text-primary/50" />
+            </div>
+            <p className="text-[15px] text-muted-foreground">Configure acima e toque em Iniciar</p>
+            <p className="text-[13px] text-muted-foreground/60">O SharkCore cuidará de todo o resto</p>
           </div>
         )}
       </main>
 
-      {/* Developer Footer */}
-      <footer className="text-center py-3 mt-4 border-t border-border/20">
-        <p className="text-xs text-muted-foreground">
-          powered by <span className="text-accent font-semibold">Shark062</span>
-        </p>
-      </footer>
+      <BottomNav />
     </div>
   );
 }
