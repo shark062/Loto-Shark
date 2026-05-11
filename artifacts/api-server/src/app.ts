@@ -7,6 +7,7 @@ import aiAnalysisRouter from "./routes/aiAnalysis";
 import predictionRouter from "./routes/prediction";
 import chatRouter from "./routes/chat";
 import advancedGenerateRouter from "./routes/advancedGenerate";
+import v3GenerateRouter from "./routes/v3generate";
 import { logger } from "./lib/logger";
 import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, getHistoryConfig } from "./lib/lotteryData";
 import { runEnsemble } from "./lib/aiEnsemble";
@@ -43,6 +44,7 @@ app.use("/api/chat",         chatRouter);
 
 // ── Advanced Pipeline v3 routes ───────────────────────────────
 app.use("/api/v2",           advancedGenerateRouter);
+app.use("/api/v3",           v3GenerateRouter);
 
 // ── Bootstrap status route ─────────────────────────────────────
 app.get("/api/v3/status", (_req: Request, res: Response) => {

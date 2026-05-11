@@ -62,6 +62,7 @@ import {
 } from "@/core/sharkPrecisionEngine";
 import { registrarDesempenho } from "@/core/sharkAutoLearning";
 import BettingPlatformIntegration from "@/components/BettingPlatformIntegration";
+import GameInsightsCard from "@/components/GameInsightsCard";
 
 const generateGameSchema = z.object({
   lotteryId: z.string().min(1, "Selecione uma modalidade"),
@@ -138,6 +139,7 @@ export default function Generator() {
   const [showInteligente, setShowInteligente] = useState(false);
   const [precisionMap, setPrecisionMap] = useState<Record<string, PrecisionResult>>({});
   const [isTurbo, setIsTurbo] = useState(false);
+  const [pipelineResult, setPipelineResult] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -154,6 +156,7 @@ export default function Generator() {
     setDesdobramentoGames([]);
     setShowDesdobramento(false);
     setPrecisionMap({});
+    setPipelineResult(null);
     toast({ title: "Jogos Limpos!", description: "Todos os jogos foram removidos." });
   };
 
@@ -218,21 +221,24 @@ export default function Generator() {
     }
   }, [selectedLottery]);
 
-  // Generate games mutation
+  // Generate games mutation — SharkCore v3
   const generateGamesMutation = useMutation({
     mutationFn: async (data: GenerateGameForm) => {
-      const payload: any = { ...data };
-      if (data.strategy === 'shark') {
-        payload.pesos = carregarPesos();
-      }
-      const response = await apiRequest('POST', '/api/games/generate', payload);
+      const payload: any = {
+        lotteryId: data.lotteryId,
+        dezenas:  data.numbersCount,
+        quantity: data.gamesCount,
+      };
+      const response = await apiRequest('POST', '/api/v3/generate', payload);
       return response.json();
     },
-    onSuccess: (data) => {
-      const isShark = data[0]?.strategy === 'shark';
+    onSuccess: (responseData) => {
+      const data = responseData.games || responseData;
+      setPipelineResult(responseData.pipeline || null);
+
       setGeneratedGames(data.map((game: any) => ({
-        numbers: game.selectedNumbers,
-        strategy: game.strategy || 'mixed',
+        numbers: game.selectedNumbers || game.numbers,
+        strategy: game.strategy || 'shark',
         confidence: game.confidence,
         reasoning: game.reasoning,
         sharkScore: game.sharkScore,
@@ -253,30 +259,23 @@ export default function Generator() {
       const totalNums = lotteryObj?.totalNumbers ?? 60;
       const newPrecision: Record<string, PrecisionResult> = {};
       data.forEach((game: any, idx: number) => {
-        const nums = game.selectedNumbers as number[];
+        const nums = (game.selectedNumbers || game.numbers) as number[];
         const pr = calcularScorePrecisao(nums, freqEntries, modalityId, totalNums);
         newPrecision[String(idx)] = pr;
         registrarDesempenho(game.sharkOrigem || game.strategy || 'shark', pr.score);
       });
       setPrecisionMap(newPrecision);
 
-      if (isShark) {
-        setSharkRawGames(data);
-        setDesdobramentoGames([]);
-        setShowDesdobramento(false);
-        setShowRegistrar(false);
-        setResultInput("");
-        // Salva na memória
-        salvarJogos(
-          data.map((g: any) => ({ jogo: g.selectedNumbers, score: g.sharkScore || 0, origem: g.sharkOrigem || 'master' })),
-          data[0]?.lotteryId || form.getValues('lotteryId'),
-        );
-        setSharkStats(estatisticasGerais());
-      } else {
-        setSharkRawGames([]);
-        setDesdobramentoGames([]);
-        setShowDesdobramento(false);
-      }
+      setSharkRawGames(data);
+      setDesdobramentoGames([]);
+      setShowDesdobramento(false);
+      setShowRegistrar(false);
+      setResultInput("");
+      salvarJogos(
+        data.map((g: any) => ({ jogo: g.selectedNumbers || g.numbers, score: g.sharkScore || 0, origem: g.sharkOrigem || 'master' })),
+        data[0]?.lotteryId || form.getValues('lotteryId'),
+      );
+      setSharkStats(estatisticasGerais());
       queryClient.invalidateQueries({ queryKey: ["/api/games"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/games"] });
@@ -1058,6 +1057,14 @@ export default function Generator() {
               </Card>
             );
           })()}
+
+          {/* SharkCore Insights Panel */}
+          {pipelineResult && generatedGames.length > 0 && (
+            <GameInsightsCard
+              pipeline={pipelineResult}
+              game={generatedGames[0]?.rawGame}
+            />
+          )}
 
           {/* Generated Games */}
           <div className="space-y-3">

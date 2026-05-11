@@ -17,6 +17,9 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import AIProviders from "@/pages/AIProviders";
 import Premium from "@/pages/Premium";
+import Strategies from "@/pages/Strategies";
+import Statistics from "@/pages/Statistics";
+import Profile from "@/pages/Profile";
 
 function Router() {
   return (
@@ -33,6 +36,9 @@ function Router() {
       <Route path="/information" component={Information} />
       <Route path="/advanced-dashboard" component={AdvancedDashboard} />
       <Route path="/ai-providers" component={AIProviders} />
+      <Route path="/strategies" component={Strategies} />
+      <Route path="/statistics" component={Statistics} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -40,7 +46,7 @@ function Router() {
 
 function App() {
   useEffect(() => {
-    console.log('🦈 Shark Loterias initialized - Premium Edition');
+    console.log('🦈 Shark Loterias initialized - SharkCore v3.0');
   }, []);
 
   return (
