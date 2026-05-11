@@ -1,7 +1,7 @@
 // Sistema de Gamificação Shark Loterias
 // Conquistas, missões, ranking e moeda virtual
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { cyberpunkSound } from './soundEffects';
 
 export interface Achievement {
@@ -523,27 +523,37 @@ export function useSharkGamification() {
     };
   }, []);
 
+  const onAnalysisPerformed = useCallback((type: string, accuracy?: number) => {
+    sharkGamification.onAnalysisPerformed(type, accuracy);
+    setStats(sharkGamification.getStats());
+    setAchievements(sharkGamification.getAchievements());
+    setMissions(sharkGamification.getMissions());
+  }, []);
+
+  const onPredictionMade = useCallback((numbers: number[], type: string) => {
+    sharkGamification.onPredictionMade(numbers, type);
+    setStats(sharkGamification.getStats());
+    setAchievements(sharkGamification.getAchievements());
+    setMissions(sharkGamification.getMissions());
+  }, []);
+
+  const onPatternFound = useCallback((type: string, strength: number) => {
+    sharkGamification.onPatternFound(type, strength);
+    setStats(sharkGamification.getStats());
+    setAchievements(sharkGamification.getAchievements());
+  }, []);
+
+  const spendSharkCoins = useCallback((amount: number, item: string) => {
+    return sharkGamification.spendSharkCoins(amount, item);
+  }, []);
+
   return {
     stats,
     achievements,
     missions,
-    onAnalysisPerformed: (type: string, accuracy?: number) => {
-      sharkGamification.onAnalysisPerformed(type, accuracy);
-      setStats(sharkGamification.getStats());
-      setAchievements(sharkGamification.getAchievements());
-      setMissions(sharkGamification.getMissions());
-    },
-    onPredictionMade: (numbers: number[], type: string) => {
-      sharkGamification.onPredictionMade(numbers, type);
-      setStats(sharkGamification.getStats());
-      setAchievements(sharkGamification.getAchievements());
-      setMissions(sharkGamification.getMissions());
-    },
-    onPatternFound: (type: string, strength: number) => {
-      sharkGamification.onPatternFound(type, strength);
-      setStats(sharkGamification.getStats());
-      setAchievements(sharkGamification.getAchievements());
-    },
-    spendSharkCoins: sharkGamification.spendSharkCoins.bind(sharkGamification),
+    onAnalysisPerformed,
+    onPredictionMade,
+    onPatternFound,
+    spendSharkCoins,
   };
 }

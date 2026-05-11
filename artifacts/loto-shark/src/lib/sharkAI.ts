@@ -280,14 +280,16 @@ export const sharkAI = new SharkAI();
 
 // Hook para usar a IA Shark de forma reativa
 export function useSharkAI() {
-  return {
-    analyzeNumbers: (numbers: number[], lotteryType: string, frequencies?: any[]) => 
-      sharkAI.analyzeNumbers(numbers, lotteryType, frequencies),
-    analyzeStrategy: (strategy: string, results: any[]) => 
-      sharkAI.analyzeStrategy(strategy, results),
-    commentOnPattern: (patternType: string, strength: number) => 
-      sharkAI.commentOnPattern(patternType, strength),
-    assessRisk: (numbers: number[], historicalData: any[]) => 
-      sharkAI.assessRisk(numbers, historicalData)
-  };
+  return sharkAIHooks;
 }
+
+const sharkAIHooks = {
+  analyzeNumbers: (numbers: number[], lotteryType: string, frequencies?: any[]) => 
+    sharkAI.analyzeNumbers(numbers, lotteryType, frequencies),
+  analyzeStrategy: (strategy: string, results: any[]) => 
+    sharkAI.analyzeStrategy(strategy, results),
+  commentOnPattern: (patternType: string, strength: number) => 
+    sharkAI.commentOnPattern(patternType, strength),
+  assessRisk: (numbers: number[], historicalData: any[]) => 
+    sharkAI.assessRisk(numbers, historicalData)
+};

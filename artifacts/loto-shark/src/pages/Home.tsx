@@ -162,7 +162,8 @@ export default function Home() {
       // Registrar análise na gamificação
       gamification.onAnalysisPerformed('megasena', 0.75);
     }
-  }, [megasenaFrequencies, sharkAI, gamification]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [megasenaFrequencies]);
 
   // Inicialização da IA Shark com dados de fallback
   useEffect(() => {
@@ -170,7 +171,8 @@ export default function Home() {
       const fallbackAnalysis = sharkAI.analyzeNumbers([1, 15, 23, 35, 44, 58], 'megasena');
       setSharkAIMessage(fallbackAnalysis.message);
     }
-  }, [megasenaFrequencies, sharkAI]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [megasenaFrequencies]);
 
   // Funções para controlar as funcionalidades
   const activateSharkMode = () => {
