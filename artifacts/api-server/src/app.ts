@@ -8,10 +8,14 @@ import predictionRouter from "./routes/prediction";
 import chatRouter from "./routes/chat";
 import advancedGenerateRouter from "./routes/advancedGenerate";
 import { logger } from "./lib/logger";
-import { initDefaultProviders, listProviders } from "./lib/aiProviders";
 import { LOTTERIES, fetchHistoricalDraws, computeFrequencies, getHistoryConfig } from "./lib/lotteryData";
 import { runEnsemble } from "./lib/aiEnsemble";
 import type { LotteryContext } from "./lib/aiEnsemble";
+import { bootstrap, getBootstrapResult } from "./core/bootstrap/bootstrapSystem";
+import { listFlags } from "./core/bootstrap/featureFlagLoader";
+import { getSystemConfig } from "./core/bootstrap/configLoader";
+import { getLanguageState } from "./core/i18n/languageManager";
+import { listProviders } from "./lib/aiProviders";
 
 const app: Express = express();
 
@@ -37,8 +41,49 @@ app.use("/api/ai",           aiAnalysisRouter);
 app.use("/api/prediction",   predictionRouter);
 app.use("/api/chat",         chatRouter);
 
-// ── Advanced Pipeline v2 routes ───────────────────────────────
+// ── Advanced Pipeline v3 routes ───────────────────────────────
 app.use("/api/v2",           advancedGenerateRouter);
+
+// ── Bootstrap status route ─────────────────────────────────────
+app.get("/api/v3/status", (_req: Request, res: Response) => {
+  const bs = getBootstrapResult();
+  const config = getSystemConfig();
+  const langState = getLanguageState();
+  const { stats } = listProviders();
+  const flags = listFlags();
+
+  res.json({
+    platform: "Loto-Shark",
+    version: config.algorithmVersion,
+    pipelineVersion: config.pipelineVersion,
+    language: langState.current,
+    bootstrap: bs
+      ? {
+          success:      bs.success,
+          durationMs:   bs.durationMs,
+          steps:        bs.steps.map(s => ({ name: s.name, status: s.status })),
+          enabledFlags: bs.enabledFlags.length,
+          warnings:     bs.warnings.length,
+        }
+      : { success: false, message: "Bootstrap não executado" },
+    aiProviders: {
+      total:  stats.total,
+      active: stats.active,
+    },
+    featureFlags: {
+      total:   flags.length,
+      enabled: flags.filter(f => f.enabled).length,
+      flags:   flags.map(f => ({ id: f.id, enabled: f.enabled })),
+    },
+    config: {
+      maxGamesPerRequest: config.maxGamesPerRequest,
+      statsCacheTtlMs:    config.statsCacheTtlMs,
+      defaultLanguage:    config.defaultLanguage,
+      debugMode:          config.debugMode,
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // ── Meta-reasoning routes (alias for AIMetrics page) ─────────
 function buildCtx(lotteryId: string, lottery: any, draws: number[][]): LotteryContext {
@@ -124,25 +169,18 @@ app.get("/api/youtube/live", async (req: Request, res: Response) => {
     const finalUrl = response.url;
     const html = await response.text();
 
-    // Verifica se é realmente uma transmissão ao vivo agora
     const liveMarkers = [
-      '"isLiveNow":true',
-      '"isLive":true',
-      '"isLiveContent":true',
-      '"isLiveBroadcast":true',
-      'BADGE_STYLE_TYPE_LIVE_NOW',
+      '"isLiveNow":true', '"isLive":true', '"isLiveContent":true',
+      '"isLiveBroadcast":true', 'BADGE_STYLE_TYPE_LIVE_NOW',
       '"liveBroadcastDetails":{"isLiveNow":true',
     ];
     const isLive = liveMarkers.some(m => html.includes(m));
-
-    // Se o YouTube redirecionou para /watch?v=... é live; se foi pra /channel ou home, não é
     const redirectedToWatch = /\/watch\?v=([a-zA-Z0-9_-]{11})/.exec(finalUrl);
 
     if (!isLive && !redirectedToWatch) {
       return res.status(404).json({ message: "Nenhuma transmissão ao vivo encontrada no momento" });
     }
 
-    // Pega o videoId — preferencialmente da URL final, senão do HTML
     let videoId: string | null = redirectedToWatch?.[1] ?? null;
     if (!videoId) {
       const m = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
@@ -162,12 +200,12 @@ app.get("/api/youtube/live", async (req: Request, res: Response) => {
   }
 });
 
-// ── Init (async — carrega providers do banco antes de servir) ──
+// ── Bootstrap v3 (inicialização assíncrona completa) ──────────
 (async () => {
   try {
-    await initDefaultProviders();
+    await bootstrap();
   } catch (err: any) {
-    logger.error({ err: err.message }, "Falha ao inicializar providers");
+    logger.error({ err: err.message }, "[App] Bootstrap falhou — servidor continua com defaults");
   }
 })();
 

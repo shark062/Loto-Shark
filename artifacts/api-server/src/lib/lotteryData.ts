@@ -107,7 +107,8 @@ export async function fetchHistoricalDraws(lotteryId: string, count?: number): P
     if (rows.length > 0) {
       const row = rows[0];
       const ageMs = Date.now() - new Date(row.fetchedAt).getTime();
-      if (ageMs < CACHE_TTL_MS && row.draws.length >= targetCount) {
+      // Usa qualquer quantidade de draws disponíveis enquanto o cache for válido
+      if (ageMs < CACHE_TTL_MS && row.draws.length > 0) {
         // Atualiza memCache também
         memCache[lotteryId] = { draws: row.draws, fetchedAt: Date.now() - ageMs };
         return row.draws.slice(0, targetCount);

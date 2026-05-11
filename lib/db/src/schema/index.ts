@@ -55,15 +55,13 @@ export const lotteryDrawsCache = pgTable('lottery_draws_cache', {
   drawCount: integer('draw_count').notNull().default(0),
 });
 
-// ── Fase 1: Contest Snapshots ──────────────────────────────────
-// Armazena snapshots completos de cada geração (para rastreabilidade e backtest)
 export const contestSnapshotsTable = pgTable('contest_snapshots', {
   id: text('id').primaryKey(),
   modality: text('modality').notNull(),
   contestNumber: integer('contest_number').notNull(),
   contestDate: text('contest_date').notNull(),
   generatedAt: timestamp('generated_at').notNull().defaultNow(),
-  algorithmVersion: text('algorithm_version').notNull().default('2.1.0'),
+  algorithmVersion: text('algorithm_version').notNull().default('3.0.0'),
   aiVersion: text('ai_version').notNull().default('ensemble-v1'),
   generationHash: text('generation_hash').notNull(),
   gamesCount: integer('games_count').notNull().default(0),
@@ -71,13 +69,11 @@ export const contestSnapshotsTable = pgTable('contest_snapshots', {
   statisticsSnapshot: jsonb('statistics_snapshot').$type<Record<string, any>>(),
   filtersSnapshot: jsonb('filters_snapshot').$type<Record<string, any>>(),
   backtestResult: jsonb('backtest_result').$type<Record<string, any>>(),
-  pipelineVersion: text('pipeline_version').notNull().default('v1'),
+  pipelineVersion: text('pipeline_version').notNull().default('v3'),
 });
 
 export type ContestSnapshot = typeof contestSnapshotsTable.$inferSelect;
 
-// ── Fase 15: Audit Log (persistência no banco) ────────────────
-// Complementa o audit logger em memória com persistência de eventos críticos
 export const auditLogsTable = pgTable('audit_logs', {
   id: text('id').primaryKey(),
   type: text('type').notNull(),
@@ -97,7 +93,6 @@ export const auditLogsTable = pgTable('audit_logs', {
 
 export type AuditLog = typeof auditLogsTable.$inferSelect;
 
-// ── Fase 14: Stats Cache (persistência de estatísticas computadas) ──
 export const statsCacheTable = pgTable('stats_cache', {
   id: serial('id').primaryKey(),
   lotteryId: text('lottery_id').notNull(),
@@ -114,3 +109,62 @@ export const statsCacheTable = pgTable('stats_cache', {
   cycleData: jsonb('cycle_data').$type<Record<string, any>>(),
   coverageScore: integer('coverage_score'),
 });
+
+// ── Sistema de Configuração (Bootstrap v3) ────────────────────
+export const systemConfigTable = pgTable('system_config', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type SystemConfig = typeof systemConfigTable.$inferSelect;
+
+// ── Preferências do Usuário ───────────────────────────────────
+export const userPreferencesTable = pgTable('user_preferences', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().default('default'),
+  preferredLotteries: jsonb('preferred_lotteries').$type<string[]>().default([]),
+  preferredStrategy: text('preferred_strategy').notNull().default('mixed'),
+  defaultGamesCount: integer('default_games_count').notNull().default(5),
+  language: text('language').notNull().default('pt-BR'),
+  notificationsEnabled: boolean('notifications_enabled').notNull().default(true),
+  theme: text('theme').notNull().default('dark'),
+  riskTolerance: text('risk_tolerance').notNull().default('medium'),
+  adaptiveWeights: jsonb('adaptive_weights').$type<Record<string, any>>(),
+  metadata: jsonb('metadata').$type<Record<string, any>>(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type UserPreferences = typeof userPreferencesTable.$inferSelect;
+
+// ── Feature Flags (DB-driven) ─────────────────────────────────
+export const featureFlagsTable = pgTable('feature_flags', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  rollout: integer('rollout').notNull().default(100),
+  description: text('description'),
+  modalities: jsonb('modalities').$type<string[]>(),
+  metadata: jsonb('metadata').$type<Record<string, any>>(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export type FeatureFlag = typeof featureFlagsTable.$inferSelect;
+
+// ── Correlation Matrix Cache ──────────────────────────────────
+export const correlationCacheTable = pgTable('correlation_cache', {
+  id: serial('id').primaryKey(),
+  lotteryId: text('lottery_id').notNull().unique(),
+  matrixData: jsonb('matrix_data').$type<Record<string, any>>(),
+  drawCount: integer('draw_count').notNull().default(0),
+  computedAt: timestamp('computed_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+});
+
+export type CorrelationCache = typeof correlationCacheTable.$inferSelect;

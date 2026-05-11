@@ -1,6 +1,6 @@
 // ============================================================
 //  Advanced Generate Route — /api/v2/generate
-//  Usa o Master Pipeline completo com todos os 15 módulos.
+//  Usa o Master Pipeline v3 completo com todos os 26 módulos.
 //  Backward compatible: não altera /api/games/generate.
 // ============================================================
 
@@ -58,10 +58,9 @@ router.post("/generate", async (req: Request, res: Response) => {
     const { optimal } = getHistoryConfig(lotteryId);
     const draws = await fetchHistoricalDraws(lotteryId, optimal);
 
-    if (draws.length < 5) {
-      return res.status(503).json({
-        message: `Sorteios insuficientes para ${lottery.displayName}. Aguarde e tente novamente.`,
-      });
+    // Avisa mas não bloqueia — pipeline degrada graciosamente com poucos dados
+    if (draws.length < 3) {
+      logger.warn({ lotteryId, drawsFound: draws.length }, "[v2/generate] Histórico muito limitado — gerando com dados mínimos");
     }
 
     const latestContest = getLatestContest(lotteryId);
@@ -142,28 +141,39 @@ router.post("/generate", async (req: Request, res: Response) => {
       strategy,
       confidence: String(g.confidence),
       reasoning:  g.reasoning,
-      dataSource: `${draws.length} sorteios reais da Caixa Econômica Federal — Pipeline v2`,
+      dataSource: `${draws.length} sorteios reais da Caixa Econômica Federal — Pipeline v3`,
       sharkScore: String(g.sharkScore),
       sharkOrigem: g.sharkOrigem,
       sharkContexto: {
-        estrategia:      strategy,
-        pesosUsados:     pesos,
-        hot:             hotNumbers.slice(0, 12),
-        warm:            warmNumbers.slice(0, 10),
-        cold:            coldNumbers.slice(0, 10),
-        precisionScore:  g.precisionScore,
+        estrategia:       strategy,
+        pesosUsados:      pesos,
+        hot:              hotNumbers.slice(0, 12),
+        warm:             warmNumbers.slice(0, 10),
+        cold:             coldNumbers.slice(0, 10),
+        precisionScore:   g.precisionScore,
         precisionComponents: g.precisionComponents,
-        riskMetrics:     g.riskMetrics,
-        cycleScore:      g.cycleScore,
-        popularPatterns: g.popularPatterns,
-        diversityScore:  pipelineResult.metrics.diversityScore,
-        coverageScore:   pipelineResult.metrics.coverageScore,
-        snapshotId:      pipelineResult.snapshotId,
-        generationHash:  pipelineResult.generationHash,
-        pipelineVersion: "v2",
-        filterStats:     pipelineResult.metrics.filterStats,
+        riskMetrics:      g.riskMetrics,
+        cycleScore:       g.cycleScore,
+        popularPatterns:  g.popularPatterns,
+        hyperScore:       g.hyperScore,
+        hyperGrade:       g.hyperGrade,
+        entropyScore:     g.entropyScore,
+        correlationScore: g.correlationScore,
+        distributionScore: g.distributionScore,
+        trendScore:       g.trendScore,
+        roiEstimate:      g.roiEstimate,
+        qualityScore:     g.qualityScore,
+        qualityMedal:     g.qualityMedal,
+        filterScore:      g.filterScore,
+        diversityScore:   pipelineResult.metrics.diversityScore,
+        coverageScore:    pipelineResult.metrics.coverageScore,
+        snapshotId:       pipelineResult.snapshotId,
+        generationHash:   pipelineResult.generationHash,
+        pipelineVersion:  pipelineResult.pipelineVersion,
+        filterStats:      pipelineResult.metrics.filterStats,
+        enginesActive:    pipelineResult.metrics.enginesActive,
         sorteiosAnalisados: draws.length,
-        backtest:        pipelineResult.backtest || null,
+        backtest:         pipelineResult.backtest || null,
       },
       matches:       0,
       prizeWon:      "0",
@@ -190,24 +200,35 @@ router.post("/generate", async (req: Request, res: Response) => {
       status:         g.status,
       hits:           g.hits,
       createdAt:      g.createdAt.toISOString(),
-      // V2 enrichment
-      precisionScore: pipelineResult.games[idx]?.precisionScore,
+      // V3 enrichment
+      precisionScore:    pipelineResult.games[idx]?.precisionScore,
       precisionComponents: pipelineResult.games[idx]?.precisionComponents,
-      riskMetrics:    pipelineResult.games[idx]?.riskMetrics,
-      cycleScore:     pipelineResult.games[idx]?.cycleScore,
-      popularPatterns: pipelineResult.games[idx]?.popularPatterns,
+      riskMetrics:       pipelineResult.games[idx]?.riskMetrics,
+      cycleScore:        pipelineResult.games[idx]?.cycleScore,
+      popularPatterns:   pipelineResult.games[idx]?.popularPatterns,
+      hyperScore:        pipelineResult.games[idx]?.hyperScore,
+      hyperGrade:        pipelineResult.games[idx]?.hyperGrade,
+      entropyScore:      pipelineResult.games[idx]?.entropyScore,
+      correlationScore:  pipelineResult.games[idx]?.correlationScore,
+      distributionScore: pipelineResult.games[idx]?.distributionScore,
+      trendScore:        pipelineResult.games[idx]?.trendScore,
+      roiEstimate:       pipelineResult.games[idx]?.roiEstimate,
+      qualityScore:      pipelineResult.games[idx]?.qualityScore,
+      qualityMedal:      pipelineResult.games[idx]?.qualityMedal,
+      filterScore:       pipelineResult.games[idx]?.filterScore,
     }));
 
     res.json({
       games: responseGames,
       pipeline: {
-        version:        "v2",
+        version:        pipelineResult.pipelineVersion,
         targetContest:  pipelineResult.targetContest,
         snapshotId:     pipelineResult.snapshotId,
         generationHash: pipelineResult.generationHash,
         executionMs:    pipelineResult.executionMs,
         metrics:        pipelineResult.metrics,
         backtest:       pipelineResult.backtest,
+        qualityRanking: pipelineResult.qualityRanking,
       },
     });
   } catch (err: any) {
@@ -419,15 +440,24 @@ router.get("/system-status", async (req: Request, res: Response) => {
 
     res.json({
       pipeline: {
-        version: "v2",
+        version: "v3",
         modules: [
-          "contestGeneration", "contestSnapshot", "temporalValidator",
+          // Núcleo (v1/v2)
+          "sharkEngine", "contestSnapshot", "temporalValidator",
           "similarityEngine", "coverageEngine", "antiPopularPatterns",
           "cycleEngine", "riskEngine", "sharkPrecisionEngine",
           "sharkBacktest", "sharkAutoLearning", "monteCarlo",
           "masterPipeline", "auditLogger", "statisticsCache",
+          // Novos v3 (26 módulos)
+          "hyperScoreEngine", "entropyEngine", "correlationEngine",
+          "distributionEngine", "temporalTrendEngine", "roiOptimizer",
+          "qualityRankingEngine", "ensembleDecisionEngine", "dynamicFilterEngine",
+          "adaptiveWeightEngine", "bootstrapSystem", "environmentLoader",
+          "configLoader", "featureFlagLoader", "languageManager",
+          "portugueseDefaults",
         ],
         status: "operational",
+        algorithmVersion: "3.0.0",
       },
       audit:  auditStats,
       cache:  cacheInfo,
