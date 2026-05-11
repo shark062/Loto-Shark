@@ -384,7 +384,8 @@ export function recalcPriorities(): void {
 export async function initDefaultProviders(): Promise<void> {
   await loadProvidersFromDB();
 
-  const envProviders: Array<{ type: string; name: string; envKey: string; model?: string }> = [
+  const envProviders: Array<{ type: string; name: string; envKey: string; model?: string; baseUrlEnvKey?: string }> = [
+    { type: "openai",     name: "OpenAI (Replit)",  envKey: "AI_INTEGRATIONS_OPENAI_API_KEY", baseUrlEnvKey: "AI_INTEGRATIONS_OPENAI_BASE_URL", model: "gpt-4o-mini" },
     { type: "openai",     name: "OpenAI",     envKey: "OPENAI_API_KEY" },
     { type: "anthropic",  name: "Anthropic",  envKey: "ANTHROPIC_API_KEY" },
     { type: "gemini",     name: "Gemini",     envKey: "GOOGLE_API_KEY" },
@@ -404,18 +405,23 @@ export async function initDefaultProviders(): Promise<void> {
     const envKey = process.env[ep.envKey];
     if (!envKey) continue;
 
-    // Verifica se já existe um provider deste tipo
-    const existing = [...providers.values()].find(p => p.type === ep.type);
+    const baseUrl = ep.baseUrlEnvKey ? process.env[ep.baseUrlEnvKey] : undefined;
+
+    // Verifica se já existe um provider com este nome exato
+    const existing = [...providers.values()].find(p => p.name === ep.name);
     if (existing) {
       // Atualiza a chave se for diferente
-      if (existing.apiKey !== envKey) {
-        await updateProvider(existing.id, { apiKey: envKey, enabled: true });
-        logger.info({ type: ep.type }, "Chave de API atualizada da variável de ambiente");
+      const updates: Partial<ProviderConfig> = { enabled: true };
+      if (existing.apiKey !== envKey) updates.apiKey = envKey;
+      if (baseUrl && existing.baseUrl !== baseUrl) updates.baseUrl = baseUrl;
+      if (Object.keys(updates).length > 1) {
+        await updateProvider(existing.id, updates);
+        logger.info({ type: ep.type, name: ep.name }, "Chave de API atualizada da variável de ambiente");
         updated++;
       }
     } else {
       // Cria novo provider
-      await addProvider({ type: ep.type, name: ep.name, apiKey: envKey, model: ep.model });
+      await addProvider({ type: ep.type, name: ep.name, apiKey: envKey, model: ep.model, baseUrl });
       added++;
     }
   }
