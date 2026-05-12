@@ -64,7 +64,8 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     proxy: {
-      "/api": {
+      // Usa regex para capturar apenas /api/ (e não /api-status ou similares)
+      "^/api/": {
         target: "http://localhost:3000",
         changeOrigin: true,
       },

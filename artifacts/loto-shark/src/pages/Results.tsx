@@ -16,21 +16,15 @@ import {
   Award,
   BarChart3,
   Download,
-  Tv2,
-  ExternalLink,
   CheckCircle,
   XCircle,
   DollarSign,
   Search,
   Target,
-  Mic,
-  MicOff,
-  Radio,
+  ShieldCheck,
 } from "lucide-react";
 import type { UserGame } from "@/types/lottery";
 
-const CANAL_CAIXA_URL = "https://www.youtube.com/@canalcaixa/live";
-const CANAL_CAIXA_CHANNEL_ID = "UCvqoM_rM5ZNRW0V2TjNLk8A";
 const DRAWS_CACHE_KEY = 'shark_official_draws_cache';
 
 const PT_WORD_MAP: Record<string, number> = {
@@ -77,17 +71,6 @@ function extractNumbersFromSpeech(text: string): number[] {
 function LiveSorteioCard({ userGames }: { userGames: any[] }) {
   const { data: lotteryTypes } = useLotteryTypes();
 
-  const { data: liveData } = useQuery<{ videoId: string; embedUrl: string }>({
-    queryKey: ["/api/youtube/live"],
-    queryFn: async () => {
-      const res = await fetch("/api/youtube/live");
-      if (!res.ok) throw new Error("live unavailable");
-      return res.json();
-    },
-    refetchInterval: 5 * 60 * 1000,
-    retry: false,
-    staleTime: 5 * 60 * 1000,
-  });
   const [selectedLotteryCheck, setSelectedLotteryCheck] = useState<string>("");
   const [lotteryDraws, setLotteryDraws] = useState<{
     lotteryId: string;
@@ -190,50 +173,25 @@ function LiveSorteioCard({ userGames }: { userGames: any[] }) {
     (lotteryTypes as any[])?.find(l => l.id === lotteryId)?.displayName || lotteryId;
 
   return (
-    <Card className="bg-black/20 border border-red-500/40 mb-6">
+    <Card className="bg-black/20 border border-primary/30 mb-6">
       <CardHeader className="pb-2">
-        <CardTitle className="text-red-400 flex items-center gap-2 text-base">
-          <Tv2 className="h-5 w-5" />
-          Sorteio ao Vivo — Canal Oficial Caixa
+        <CardTitle className="text-primary flex items-center gap-2 text-base">
+          <ShieldCheck className="h-5 w-5" />
+          Conferência Oficial — Resultados da Caixa
           <div className="ml-auto flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs font-normal text-red-400">AO VIVO</span>
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs font-normal text-primary/70">CAIXA</span>
           </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
 
-        {/* Vídeo embed automático — Canal Caixa ao vivo */}
-        <div className="w-full rounded-xl overflow-hidden border border-red-500/20 bg-black" style={{ aspectRatio: '16/9' }}>
-          <iframe
-            className="w-full h-full"
-            style={{ minHeight: 200 }}
-            src={liveData?.embedUrl ?? "https://www.youtube.com/embed/live_stream?channel=UC_unXshByY_Tf0XG_SgD8fA&autoplay=1&mute=1"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            title="Sorteio ao Vivo — Canal Caixa"
-          />
-        </div>
-
-        {/* Botão para abrir no YouTube caso o embed não carregue */}
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => window.open(CANAL_CAIXA_URL, '_blank')}
-            className="text-red-400 hover:text-red-300 gap-1.5 text-xs"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Abrir canal no YouTube
-          </Button>
-        </div>
-
         {/* Conferência via resultado oficial da Caixa */}
-        <div className="border-t border-white/10 pt-4 space-y-3">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-primary" />
-              <p className="text-sm font-semibold text-primary">Conferência Oficial (após o sorteio)</p>
+              <p className="text-sm font-semibold text-primary">Buscar resultado oficial</p>
             </div>
             {(lotteryDraws.length > 0 || fetchError) && (
               <Button variant="ghost" size="sm" onClick={clearAll} className="text-muted-foreground text-xs h-7 px-2">

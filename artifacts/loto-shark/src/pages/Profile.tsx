@@ -16,6 +16,7 @@ import {
   Cpu,
   Award,
   Activity,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function Profile() {
@@ -42,10 +43,11 @@ export default function Profile() {
   const systemStatus = statusData as any;
 
   const quickLinks = [
-    { label: "Provedores de IA", icon: Brain,    path: "/ai-providers" },
-    { label: "Métricas IA",      icon: Activity, path: "/ai-metrics" },
-    { label: "Dashboard",        icon: Cpu,      path: "/advanced-dashboard" },
-    { label: "Informações",      icon: Settings, path: "/information" },
+    { label: "Provedores de IA", icon: Brain,        path: "/ai-providers" },
+    { label: "Métricas IA",      icon: Activity,     path: "/ai-metrics" },
+    { label: "Status da API",    icon: ShieldCheck,  path: "/api-status" },
+    { label: "Dashboard",        icon: Cpu,          path: "/advanced-dashboard" },
+    { label: "Informações",      icon: Settings,     path: "/information" },
   ];
 
   return (

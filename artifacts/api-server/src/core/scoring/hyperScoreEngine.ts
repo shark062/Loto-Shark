@@ -49,17 +49,24 @@ export interface HyperScoreResult {
 
 // ─── Pesos Padrão ─────────────────────────────────────────────
 
+// ─── Pesos Refinados v2 ────────────────────────────────────
+// Ajuste baseado em análise de desempenho:
+// - Aumenta peso de distribuição (soma/paridade são fortes preditores)
+// - Aumenta peso de correlação (pares co-ocorrentes são relevantes)
+// - Aumenta temporal (ciclos recentes têm mais peso que histórico distante)
+// - Reduz cycle (muito volátil, peso excessivo gerava false positives)
+// - Reduz popular (penalidade de popularidade é mais fraca que imaginado)
 export const DEFAULT_HYPER_WEIGHTS: HyperScoreWeights = {
-  precision:    0.22,
-  entropy:      0.10,
-  correlation:  0.08,
-  distribution: 0.10,
-  risk:         0.15,
-  cycle:        0.10,
-  popular:      0.08,
-  coverage:     0.07,
-  temporal:     0.05,
-  roi:          0.05,
+  precision:    0.20,  // SharkPrecisionEngine — base sólida
+  entropy:      0.10,  // Diversidade de números
+  correlation:  0.12,  // Pares co-ocorrentes — subido de 0.08
+  distribution: 0.14,  // Soma/paridade — subido de 0.10
+  risk:         0.13,  // Composite de risco
+  cycle:        0.08,  // Padrão cíclico — reduzido de 0.10
+  popular:      0.06,  // Penalidade de popularidade — reduzido de 0.08
+  coverage:     0.08,  // Cobertura do espaço de números
+  temporal:     0.06,  // Tendência temporal — subido de 0.05
+  roi:          0.03,  // ROI estimado — reduzido (muito incerto)
 };
 
 // ─── Normalização de Componentes ──────────────────────────────
@@ -142,21 +149,35 @@ export function computeHyperScore(
   else if (hyperScore >= 350) grade = "C";
   else grade = "D";
 
-  const confidence = Math.min(0.99, 0.50 + product * 0.49);
+  // Bônus de convergência: se os 3 melhores componentes forem >= 0.75, aplica bônus
+  const topComponents = Object.values(components).sort((a, b) => b - a).slice(0, 3);
+  const convergenceBonus = topComponents.every(c => c >= 0.75) ? 0.04 : 0;
+  const bonusedProduct = Math.min(1, product + convergenceBonus);
+  const finalHyperScore = Math.round(bonusedProduct * 1000);
+
+  // Reclassifica grade com produto bonificado
+  let finalGrade: HyperScoreResult["grade"];
+  if (finalHyperScore >= 820) finalGrade = "S";
+  else if (finalHyperScore >= 670) finalGrade = "A";
+  else if (finalHyperScore >= 510) finalGrade = "B";
+  else if (finalHyperScore >= 360) finalGrade = "C";
+  else finalGrade = "D";
+
+  const confidence = Math.min(0.99, 0.50 + bonusedProduct * 0.49);
 
   logger.debug(
-    { hyperScore, grade, weakestFactor },
-    "[HyperScore] Score calculado",
+    { hyperScore: finalHyperScore, grade: finalGrade, weakestFactor, convergenceBonus },
+    "[HyperScore v2] Score calculado",
   );
 
   return {
-    hyperScore,
-    normalized: Math.round(product * 1000) / 1000,
-    grade,
+    hyperScore: finalHyperScore,
+    normalized: Math.round(bonusedProduct * 1000) / 1000,
+    grade: finalGrade,
     components,
     weakestFactor,
     confidence,
-    version: "hyperscore-v1",
+    version: "hyperscore-v2",
   };
 }
 

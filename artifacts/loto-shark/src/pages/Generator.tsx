@@ -322,24 +322,25 @@ export default function Generator() {
       <main className="max-w-lg mx-auto px-4 pt-4 pb-32">
 
         {/* ── Header ───────────────────────────────────── */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-semibold tracking-widest uppercase text-primary/80">SharkCore v3.0</span>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-[10px] font-bold tracking-widest uppercase text-primary/70">SharkCore v3.0</span>
+            </div>
+            <h1 className="text-[22px] font-bold leading-tight text-white">Gerador Inteligente</h1>
           </div>
-          <h1 className="text-[26px] font-bold leading-tight text-white">
-            Gerador Inteligente
-          </h1>
-          <p className="text-[15px] text-muted-foreground mt-1">
-            IA unificada com 14 engines de análise
-          </p>
+          <div className="text-right">
+            <span className="text-[10px] text-muted-foreground/60 block">14 engines</span>
+            <span className="text-[10px] text-primary/50">IA unificada</span>
+          </div>
         </div>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
 
           {/* ── Config card ──────────────────────────────── */}
           <div
-            className="rounded-2xl border border-white/10 p-5 space-y-4"
+            className="rounded-2xl border border-white/10 p-4 space-y-3"
             style={{ background: "#121826" }}
           >
             {/* Modalidade */}
@@ -519,7 +520,7 @@ export default function Generator() {
           <button
             type="submit"
             disabled={isGenerating || !lotteryId}
-            className="w-full h-16 rounded-2xl text-[17px] font-bold tracking-wide transition-all duration-300 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-[54px] rounded-2xl text-[16px] font-bold tracking-wide transition-all duration-300 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: isGenerating
                 ? "rgba(0,229,168,0.15)"
@@ -577,7 +578,7 @@ export default function Generator() {
 
         {/* ═══ RESULTS ════════════════════════════════════ */}
         {hasGames && (
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 space-y-3">
 
             {/* ── GameInsights ─────────────────────────────── */}
             {pipelineResult && (
@@ -877,12 +878,12 @@ export default function Generator() {
 
         {/* Empty state */}
         {!hasGames && !isGenerating && (
-          <div className="text-center py-12 space-y-2">
-            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: "rgba(0,229,168,0.08)" }}>
-              <Zap className="h-7 w-7 text-primary/50" />
+          <div className="text-center py-8 space-y-2">
+            <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center" style={{ background: "rgba(0,229,168,0.08)" }}>
+              <Zap className="h-5 w-5 text-primary/50" />
             </div>
-            <p className="text-[15px] text-muted-foreground">Configure acima e toque em Iniciar</p>
-            <p className="text-[13px] text-muted-foreground/60">O SharkCore cuidará de todo o resto</p>
+            <p className="text-[14px] text-muted-foreground">Configure acima e toque em Iniciar</p>
+            <p className="text-[12px] text-muted-foreground/50">O SharkCore cuidará de tudo</p>
           </div>
         )}
       </main>

@@ -20,6 +20,7 @@ import Premium from "@/pages/Premium";
 import Strategies from "@/pages/Strategies";
 import Statistics from "@/pages/Statistics";
 import Profile from "@/pages/Profile";
+import APIStatus from "@/pages/APIStatus";
 import BottomNav from "@/components/BottomNav";
 
 const ROUTES_WITH_BOTTOM_NAV = [
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/strategies" component={Strategies} />
       <Route path="/statistics" component={Statistics} />
       <Route path="/profile" component={Profile} />
+      <Route path="/api-status" component={APIStatus} />
       <Route component={NotFound} />
     </Switch>
   );
