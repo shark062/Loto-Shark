@@ -8,33 +8,53 @@ interface NumberBallProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onClick'
   onClick?: () => void;
   selected?: boolean;
   dimmed?: boolean;
-  temperature?: "hot" | "warm" | "cold";
+  temperature?: "hot" | "warm" | "cold"; // kept for API compat — NOT rendered as glow
   variant?: string;
   animate?: boolean;
 }
 
-const DIGIT_COLORS: Record<number, { base: string; light: string; dark: string; text: string }> = {
-  0: { base: '#CECECE', light: '#F4F4F4', dark: '#888888', text: '#1A1A1A' },
-  1: { base: '#C80000', light: '#FF3030', dark: '#7A0000', text: '#FFFFFF' },
-  2: { base: '#F5CC00', light: '#FFE840', dark: '#A08000', text: '#1A1A1A' },
-  3: { base: '#157A15', light: '#1EB81E', dark: '#084808', text: '#FFFFFF' },
-  4: { base: '#7A3210', light: '#B0581C', dark: '#421606', text: '#FFFFFF' },
-  5: { base: '#1A6ED4', light: '#3A96FF', dark: '#0A408A', text: '#FFFFFF' },
-  6: { base: '#D83890', light: '#FF66C0', dark: '#8A1058', text: '#FFFFFF' },
-  7: { base: '#1C1C1C', light: '#545454', dark: '#080808', text: '#FFFFFF' },
-  8: { base: '#868686', light: '#C4C4C4', dark: '#4A4A4A', text: '#FFFFFF' },
-  9: { base: '#F07000', light: '#FFA030', dark: '#AA3A00', text: '#FFFFFF' },
+/* ─── Realistic colour palette by last digit ─────────────────
+   Matches official Caixa/Bingo physical ball colours.
+   Each entry: light (highlight transition), base (main), dark (shadow side).
+   NO neon — NO fluorescent — physical plastic only.
+──────────────────────────────────────────────────────────── */
+const PALETTE: Record<number, { light: string; base: string; dark: string; text: string }> = {
+  0: { light: '#F8F8F8', base: '#D8D8D8', dark: '#9A9A9A', text: '#1A1A1A' }, // White
+  1: { light: '#E84040', base: '#BE0000', dark: '#780000', text: '#FFFFFF' }, // Red
+  2: { light: '#FFE030', base: '#E8B800', dark: '#A07400', text: '#1A1A1A' }, // Yellow
+  3: { light: '#2CC02C', base: '#147014', dark: '#074007', text: '#FFFFFF' }, // Green
+  4: { light: '#A86030', base: '#6E3010', dark: '#3E1606', text: '#FFFFFF' }, // Brown
+  5: { light: '#3A88E8', base: '#0F52C0', dark: '#082E80', text: '#FFFFFF' }, // Blue
+  6: { light: '#F040A8', base: '#C00878', dark: '#840050', text: '#FFFFFF' }, // Pink
+  7: { light: '#484848', base: '#181818', dark: '#060606', text: '#FFFFFF' }, // Black
+  8: { light: '#BBBBBB', base: '#787878', dark: '#424242', text: '#FFFFFF' }, // Gray
+  9: { light: '#FF9020', base: '#D85800', dark: '#963000', text: '#FFFFFF' }, // Orange
 };
 
+/* ─── Build background: layered radial gradients ────────────
+   Layer 1 (top): broad elliptical specular — fades to transparent
+   Layer 2 (base): sphere body — light → base colour → dark → near-black
+──────────────────────────────────────────────────────────── */
 export function getBallStyle(number: number): {
   background: string;
   boxShadow: string;
   color: string;
 } {
-  const c = DIGIT_COLORS[number % 10];
+  const c = PALETTE[number % 10];
   return {
-    background: `radial-gradient(circle at 33% 27%, ${c.light} 0%, ${c.light} 10%, ${c.base} 46%, ${c.dark} 88%, #000 100%)`,
-    boxShadow: `3px 5px 16px rgba(0,0,0,0.72), inset -3px -4px 8px rgba(0,0,0,0.38), inset 2px 3px 7px rgba(255,255,255,0.42), inset 0 -1px 3px rgba(255,255,255,0.10)`,
+    background: [
+      // Top highlight ellipse — upper-left, generous size for realistic plastic sheen
+      `radial-gradient(ellipse 58% 44% at 31% 24%, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.60) 18%, rgba(255,255,255,0.20) 40%, rgba(255,255,255,0) 60%)`,
+      // Sphere body — light transition → base colour → shadow → near-black edge
+      `radial-gradient(circle at 42% 40%, ${c.light} 0%, ${c.base} 44%, ${c.dark} 70%, rgba(0,0,0,0.78) 100%)`,
+    ].join(', '),
+    // Realistic physical shadow — NO neon, NO colour glow
+    boxShadow: [
+      '3px 5px 14px rgba(0,0,0,0.55)',         // natural drop shadow
+      '1px 2px 4px rgba(0,0,0,0.28)',           // close contact shadow
+      'inset -4px -5px 12px rgba(0,0,0,0.40)', // inner depth (dark lower-right)
+      'inset 1px 2px 4px rgba(255,255,255,0.12)', // inner surface top catch
+    ].join(', '),
     color: c.text,
   };
 }
@@ -46,25 +66,13 @@ export function NumberBall({
   onClick,
   selected = false,
   dimmed = false,
-  temperature,
+  temperature: _temperature, // accepted, intentionally unused — no glow rendered
   variant: _variant,
   animate = false,
   style: styleProp,
   ...rest
 }: NumberBallProps) {
-  const { background, boxShadow: baseShadow, color } = getBallStyle(number);
-
-  const selectedRing = selected
-    ? ', 0 0 0 3px #FFFFFF, 0 0 0 5.5px rgba(255,255,255,0.35)'
-    : '';
-
-  const tempGlow: Record<string, string> = {
-    hot:  ', 0 0 0 2px #FF4444, 0 0 14px rgba(255,60,60,0.60)',
-    warm: ', 0 0 0 2px #FFCC00, 0 0 14px rgba(255,200,0,0.60)',
-    cold: ', 0 0 0 2px #4499FF, 0 0 14px rgba(60,140,255,0.60)',
-  };
-
-  const boxShadow = baseShadow + (selectedRing) + (temperature ? tempGlow[temperature] ?? '' : '');
+  const { background, boxShadow, color } = getBallStyle(number);
 
   return (
     <div
@@ -74,11 +82,11 @@ export function NumberBall({
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
       className={cn(
         `lottery-ball lottery-ball--${size}`,
-        onClick && 'lottery-ball--clickable',
+        onClick  && 'lottery-ball--clickable',
         selected && 'lottery-ball--selected',
-        dimmed && 'lottery-ball--dimmed',
-        animate && 'lottery-ball--pop',
-        className
+        dimmed   && 'lottery-ball--dimmed',
+        animate  && 'lottery-ball--pop',
+        className,
       )}
       style={{
         background,
@@ -89,17 +97,20 @@ export function NumberBall({
       }}
       {...rest}
     >
-      <span className="lottery-ball__gloss" aria-hidden />
+      {/* Highlight layers — rendered by CSS in lottery-balls.css */}
+      <span className="lottery-ball__gloss"    aria-hidden />
       <span className="lottery-ball__specular" aria-hidden />
-      <span className="lottery-ball__rim" aria-hidden />
+      <span className="lottery-ball__rim"      aria-hidden />
+
       <span
         className="lottery-ball__label"
         style={{
           fontSize: 'inherit',
           fontWeight: 'inherit',
+          // Crisp text shadow — contrast only, NO neon
           textShadow: color === '#FFFFFF'
-            ? '0 1px 3px rgba(0,0,0,0.85)'
-            : '0 1px 2px rgba(255,255,255,0.55)',
+            ? '0 1px 3px rgba(0,0,0,0.80)'
+            : '0 1px 2px rgba(255,255,255,0.50)',
         }}
       >
         {number.toString().padStart(2, '0')}
