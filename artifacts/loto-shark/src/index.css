@@ -109,7 +109,8 @@ img {
 main {
   min-height: calc(100vh - 200px);
   padding-top: 1rem;
-  padding-bottom: 2rem;
+  /* espaço extra para o BottomNav fixo em mobile */
+  padding-bottom: 5.5rem;
 }
 
 @media (min-width: 1024px) {
@@ -340,14 +341,10 @@ span[data-placeholder],
 }
 
 @layer components {
+  /* neon-border: borda sólida sutil — compatível com build de produção (sem gradiente no border-box que quebra em Safari/produção) */
   .neon-border {
-    border: 1px solid transparent;
-    background: rgba(5, 5, 28, 0.92) padding-box,
-      linear-gradient(90deg,
-        hsl(180, 100%, 50%),
-        hsl(280, 100%, 50%),
-        hsl(180, 100%, 50%)
-      ) border-box;
+    border: 1px solid rgba(0, 210, 255, 0.30);
+    background: rgba(5, 5, 28, 0.92);
     border-radius: 16px;
   }
 

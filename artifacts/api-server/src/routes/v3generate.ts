@@ -18,6 +18,7 @@ import { buildSharkAnalysisContext } from "../lib/aiEnsemble";
 import { runMasterPipeline } from "../core/pipeline/masterPipeline";
 import { db, userGamesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { createContestBinding } from "../core/contest/contestBindingEngine";
 
 const router = Router();
 
@@ -104,6 +105,10 @@ router.post("/generate", async (req: Request, res: Response) => {
     };
     const sharkCtx = buildSharkAnalysisContext(baseCtx, draws);
 
+    // Resolve o próximo concurso alvo (latestContest + 1) via ContestBindingEngine
+    const contestBinding = createContestBinding(lotteryId, latestContest);
+    logger.info({ lotteryId, latestContest, targetContest: contestBinding.targetContestNumber }, "[v3/generate] Vínculo de concurso");
+
     const pipelineResult = await runMasterPipeline({
       lotteryId,
       lotteryName:  lottery.displayName,
@@ -175,8 +180,8 @@ router.post("/generate", async (req: Request, res: Response) => {
       },
       matches:       0,
       prizeWon:      "0",
-      contestNumber: pipelineResult.targetContest,
-      status:        "pending",
+      contestNumber: contestBinding.targetContestNumber,
+      status:        "aguardando_sorteio",
       hits:          0,
     }));
 

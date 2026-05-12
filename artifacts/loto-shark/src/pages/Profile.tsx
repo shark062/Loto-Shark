@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import BottomNav from "@/components/BottomNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -202,7 +201,6 @@ export default function Profile() {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,6 +20,28 @@ import Premium from "@/pages/Premium";
 import Strategies from "@/pages/Strategies";
 import Statistics from "@/pages/Statistics";
 import Profile from "@/pages/Profile";
+import BottomNav from "@/components/BottomNav";
+
+const ROUTES_WITH_BOTTOM_NAV = [
+  "/",
+  "/generator",
+  "/strategies",
+  "/statistics",
+  "/profile",
+  "/results",
+  "/heat-map",
+  "/ai-analysis",
+  "/advanced-dashboard",
+];
+
+function GlobalBottomNav() {
+  const [location] = useLocation();
+  const showNav = ROUTES_WITH_BOTTOM_NAV.some(r =>
+    r === "/" ? location === "/" : location.startsWith(r)
+  );
+  if (!showNav) return null;
+  return <BottomNav />;
+}
 
 function Router() {
   return (
@@ -64,6 +86,7 @@ function App() {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <Toaster />
           <Router />
+          <GlobalBottomNav />
         </div>
       </div>
     </QueryClientProvider>

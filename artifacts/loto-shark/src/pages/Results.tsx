@@ -547,7 +547,7 @@ export default function Results() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navigation />
-      <main className="container mx-auto px-3 sm:px-4 py-6">
+      <main className="container mx-auto px-3 sm:px-4 pt-4">
         <div className="text-center mb-5">
           <h2 className="text-xl sm:text-2xl font-bold neon-text text-primary mb-1">Resultados 📊</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">Confira seus acertos, transmissão ao vivo e prêmios</p>
@@ -623,6 +623,16 @@ export default function Results() {
                         <div className="flex gap-1.5 flex-wrap">
                           <Badge variant="secondary" className="text-xs">{getLotteryName(game.lotteryId)}</Badge>
                           <Badge variant="outline" className="text-xs">#{game.contestNumber}</Badge>
+                          {(game.status === "aguardando_sorteio" || game.status === "pending") ? (
+                            <Badge className="text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse inline-block" />
+                              Aguardando sorteio
+                            </Badge>
+                          ) : game.status === "conferido" ? (
+                            <Badge className="text-xs bg-green-500/20 text-green-300 border border-green-500/40">Conferido</Badge>
+                          ) : game.status === "sorteado" ? (
+                            <Badge className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40">Sorteado</Badge>
+                          ) : null}
                         </div>
                         <div className={`text-sm font-bold ${getMatchesColor(game.matches, game.prizeWon)}`}>
                           R$ {parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -633,6 +643,11 @@ export default function Results() {
                           <NumberBall key={num} number={num} size="xs" />
                         ))}
                       </div>
+                      {(game.status === "aguardando_sorteio" || game.status === "pending") && (
+                        <p className="text-[11px] text-yellow-400/70 mt-2 bg-yellow-500/10 rounded-md px-2 py-1">
+                          Jogo vinculado ao concurso <strong>#{game.contestNumber}</strong>. Conferência disponível após o sorteio oficial.
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 )) : (

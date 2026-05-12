@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import BottomNav from "@/components/BottomNav";
 import { useLotteryTypes } from "@/hooks/useLotteryData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,7 +192,6 @@ export default function Statistics() {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 }
