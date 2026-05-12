@@ -40,6 +40,7 @@ import {
   applyDynamicFilters,
 } from "../filters/dynamicFilterEngine";
 import { isEnabled } from "../bootstrap/featureFlagLoader";
+import { computeCompositeMathScore, collectiveCoverageOptimizer } from "../mathEngines";
 
 // ─── Tipos ────────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ export interface PipelineResult {
 
 export async function runMasterPipeline(input: PipelineInput): Promise<PipelineResult> {
   const startMs = Date.now();
-  const enginesActive: string[] = ["sharkEngine", "antiPopular", "cycleEngine", "riskEngine", "precision", "similarity", "coverage"];
+  const enginesActive: string[] = ["sharkEngine", "antiPopular", "cycleEngine", "riskEngine", "precision", "similarity", "coverage", "mathEngines_v2"];
 
   const {
     lotteryId, totalNumbers, minNumbers, pickCount,
@@ -285,16 +286,35 @@ export async function runMasterPipeline(input: PipelineInput): Promise<PipelineR
       } catch { /* fallback */ }
     }
 
+    // Math Engines v2 — composite score from 5 advanced algorithms
+    let mathScore = 50;
+    try {
+      const freqEntries = Object.entries(frequencyMap).map(([k, v]) => ({
+        number: Number(k), frequency: v, delay: delayMap[Number(k)] ?? 0,
+        temperature: hotNumbers.includes(Number(k)) ? "hot" as const
+          : coldNumbers.includes(Number(k)) ? "cold" as const : "warm" as const,
+      }));
+      const mathResult = computeCompositeMathScore({
+        numbers: c.numbers,
+        draws,
+        freqEntries,
+        frequencyMap,
+        totalNumbers,
+      });
+      mathScore = mathResult.score;
+    } catch { /* fallback */ }
+
     return {
       ...c,
       originalSharkScore: c.score,
-      score: precisionResult.finalScore,
+      score: precisionResult.finalScore * 0.90 + mathScore * 0.10,
       cycleScore: cycleScoreRaw,
       precisionResult,
       entropyScore,
       correlationScore,
       distributionScore,
       trendScore,
+      mathScore,
     };
   });
 
@@ -621,7 +641,7 @@ function buildReasoning(strategy: string, drawsAnalyzed: number, sharkScore: num
   return `[Pipeline v3] Estratégia: ${stratLabel[strategy] || strategy} | ` +
     `${drawsAnalyzed} sorteios reais analisados | ` +
     `SharkScore: ${sharkScore} | Risco: ${riskLevel} | ` +
-    `Filtros: HyperScore, Entropia, Correlação, Distribuição, Tendência, ROI, Qualidade`;
+    `Filtros: HyperScore, Entropia, Correlação, Distribuição, Tendência, ROI, Qualidade, MathEngines v2`;
 }
 
 function buildEmptyResult(

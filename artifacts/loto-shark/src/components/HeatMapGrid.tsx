@@ -1,6 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Flame } from "lucide-react";
 import { NumberBall } from "@/components/NumberBall";
+import { Flame } from "lucide-react";
 import type { NumberFrequency } from "@/types/lottery";
 
 interface HeatMapGridProps {
@@ -10,132 +9,77 @@ interface HeatMapGridProps {
   onNumberClick?: (number: number) => void;
 }
 
+const TEMP_RING = {
+  hot:  { outline: '2px solid #FF4444', glow: '0 0 8px rgba(255,68,68,0.45)' },
+  warm: { outline: '2px solid #FFCC00', glow: '0 0 8px rgba(255,200,0,0.45)' },
+  cold: { outline: '2px solid #4499FF', glow: '0 0 8px rgba(68,153,255,0.45)' },
+};
+
 export default function HeatMapGrid({
   frequencies,
   maxNumbers,
   isLoading,
-  onNumberClick
+  onNumberClick,
 }: HeatMapGridProps) {
-  const getNumberStyle = (number: number) => {
-    const freq = frequencies.find(f => f.number === number);
-    const temperature = freq?.temperature || 'cold';
-
-    const styles = {
-      hot: "bg-red-500/80 text-white border-red-400 hover:bg-red-600/90",
-      warm: "bg-yellow-500/80 text-white border-yellow-400 hover:bg-yellow-600/90",
-      cold: "bg-blue-500/80 text-white border-blue-400 hover:bg-blue-600/90"
-    };
-
-    return styles[temperature];
-  };
-
-  const getTemperatureIcon = (temperature: string) => {
-    switch (temperature) {
-      case 'hot': return '🔥';
-      case 'warm': return '♨️';
-      case 'cold': return '❄️';
-      default: return '❄️';
-    }
-  };
-
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-primary flex items-center">
-            <Flame className="h-5 w-5 mr-2 text-destructive" />
-            Carregando Mapa de Calor...
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="number-grid grid grid-cols-10 gap-1.5 mb-4">
-            {[...Array(60)].map((_, i) => (
-              <div
-                key={i}
-                className="aspect-square bg-white/[0.07] rounded-lg animate-pulse"
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl border border-white/8 p-4" style={{ background: "#121826" }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Flame className="h-4 w-4 text-red-400" />
+          <span className="text-[13px] font-bold text-white">Carregando mapa...</span>
+        </div>
+        <div className="number-grid grid grid-cols-10 gap-1.5">
+          {[...Array(maxNumbers)].map((_, i) => (
+            <div
+              key={i}
+              className="aspect-square rounded-full bg-white/[0.07] animate-pulse"
+              style={{ width: 32, height: 32 }}
+            />
+          ))}
+        </div>
+      </div>
     );
   }
 
+  const getTemp = (n: number): "hot" | "warm" | "cold" => {
+    const freq = frequencies.find(f => f.number === n);
+    return (freq?.temperature as any) || 'cold';
+  };
+
   return (
-    <Card data-testid="heat-map-grid">
-      <CardHeader>
-        <CardTitle className="text-primary flex items-center gap-2">
-          <Flame className="h-5 w-5 text-destructive" />
-          Mapa de Calor dos Números
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* Numbers Grid */}
-        <div className="number-grid mb-6 flex flex-wrap gap-1.5 justify-center">
-          {Array.from({ length: maxNumbers }, (_, i) => {
-            const number = i + 1;
-            const freq = frequencies.find(f => f.number === number);
-            return (
-              <NumberBall
-                key={number}
-                number={number}
-                size="xs"
-                onClick={onNumberClick ? () => onNumberClick(number) : undefined}
-                temperature={freq?.temperature as "hot" | "warm" | "cold" | undefined}
-                title={`Número ${number} - ${freq?.frequency || 0} vezes - ${freq?.temperature || 'cold'}`}
-                data-testid={`number-${number}`}
-                data-temperature={freq?.temperature || 'cold'}
-              />
-            );
-          })}
+    <div className="rounded-2xl border border-white/8 p-4" style={{ background: "#121826" }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Flame className="h-4 w-4 text-red-400" />
+          <span className="text-[13px] font-bold text-white">Mapa de Calor</span>
         </div>
-
-        {/* Legend */}
-        <div className="flex justify-center gap-6 text-sm flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-red-500/80 border border-red-400 text-[10px]">🔥</span>
-            <span className="text-muted-foreground">
-              Quentes ({frequencies.filter(f => f.temperature === 'hot').length})
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-yellow-500/80 border border-yellow-400 text-[10px]">♨️</span>
-            <span className="text-muted-foreground">
-              Mornos ({frequencies.filter(f => f.temperature === 'warm').length})
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/80 border border-blue-400 text-[10px]">❄️</span>
-            <span className="text-muted-foreground">
-              Frios ({frequencies.filter(f => f.temperature === 'cold').length})
-            </span>
-          </div>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Quente
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block" />Morno
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />Frio
+          </span>
         </div>
+      </div>
 
-        {/* Statistics */}
-        {frequencies.length > 0 && (
-          <div className="mt-5 grid grid-cols-3 gap-3 text-center">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-              <div className="text-xl font-bold text-red-400">
-                {frequencies.filter(f => f.temperature === 'hot').length}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">Quentes</div>
-            </div>
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-              <div className="text-xl font-bold text-amber-400">
-                {frequencies.filter(f => f.temperature === 'warm').length}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">Mornos</div>
-            </div>
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
-              <div className="text-xl font-bold text-primary">
-                {frequencies.filter(f => f.temperature === 'cold').length}
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">Frios</div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <div className="number-grid grid gap-1.5" style={{ gridTemplateColumns: `repeat(10, 1fr)` }}>
+        {Array.from({ length: maxNumbers }, (_, i) => i + 1).map(n => {
+          const temp = getTemp(n);
+          return (
+            <NumberBall
+              key={n}
+              number={n}
+              size="xs"
+              temperature={temp}
+              onClick={onNumberClick ? () => onNumberClick(n) : undefined}
+            />
+          );
+        })}
+      </div>
+    </div>
   );
 }

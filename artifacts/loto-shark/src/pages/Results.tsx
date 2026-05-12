@@ -503,120 +503,169 @@ export default function Results() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen text-foreground pb-28" style={{ background: "#0B0F19" }}>
       <Navigation />
-      <main className="container mx-auto px-3 sm:px-4 pt-4">
-        <div className="text-center mb-5">
-          <h2 className="text-xl sm:text-2xl font-bold neon-text text-primary mb-1">Resultados 📊</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Confira seus acertos, transmissão ao vivo e prêmios</p>
-          <div className="flex justify-center mt-3 gap-2 flex-wrap">
-            <Button onClick={exportToPDF} className="bg-primary hover:bg-primary/80 text-black flex items-center gap-2 text-xs sm:text-sm">
-              <Download className="h-4 w-4" /> Exportar PDF
-            </Button>
-            <Button
-              variant="outline"
+      <main className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+
+        {/* ── Header ─────────────────────────────────────────── */}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-[10px] font-bold tracking-widest uppercase text-primary/70">Painel de Resultados</span>
+            </div>
+            <h1 className="text-[22px] font-bold leading-tight text-white">Resultados</h1>
+            <p className="text-[12px] text-muted-foreground mt-0.5">Acertos, conferências e histórico completo</p>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={exportToPDF}
+              className="flex items-center gap-1.5 text-[12px] font-semibold px-3 h-8 rounded-xl border border-primary/40 text-primary hover:bg-primary/10 transition-all"
+            >
+              <Download className="h-3.5 w-3.5" /> PDF
+            </button>
+            <button
               onClick={handleClearAllGames}
               disabled={clearingGames || gamesList.length === 0}
-              className="border-red-500/50 text-red-400 hover:bg-red-500/10 flex items-center gap-2 text-xs sm:text-sm"
+              className="flex items-center gap-1.5 text-[12px] font-semibold px-3 h-8 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <XCircle className="h-4 w-4" />
-              {clearingGames ? 'Removendo...' : 'Limpar Jogos'}
-            </Button>
+              <XCircle className="h-3.5 w-3.5" />
+              {clearingGames ? 'Limpando…' : 'Limpar'}
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-5">
+        {/* ── Stats strip ───────────────────────────────────── */}
+        <div className="grid grid-cols-4 gap-2">
           {[
-            { label: "Total de Jogos", val: userStats?.totalGames ?? 0, icon: Trophy, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
-            { label: "Premiados", val: userStats?.wins ?? 0, icon: Medal, color: "text-neon-green", bg: "bg-green-500/10", border: "border-green-500/20" },
-            { label: "Taxa de Acerto", val: `${userStats?.accuracy || 0}%`, icon: BarChart3, color: "text-accent", bg: "bg-accent/10", border: "border-accent/20" },
-            { label: "Total Ganho", val: `R$ ${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign, color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20" }
-          ].map((stat, i) => (
-            <Card key={i} className={`bg-black/20 border ${stat.border}`}>
-              <CardContent className="p-2 sm:p-3 flex flex-col items-center text-center">
-                <div className={`w-7 h-7 sm:w-8 sm:h-8 ${stat.bg} rounded-lg flex items-center justify-center mb-1.5`}>
-                  <stat.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${stat.color}`} />
-                </div>
-                <div className={`text-base sm:text-lg font-bold ${stat.color} neon-text leading-tight`}>
-                  {statsLoading ? "–" : stat.val}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5 leading-tight">{stat.label}</div>
-              </CardContent>
-            </Card>
+            { label: "Jogos",   val: userStats?.totalGames ?? 0,                                                           icon: Trophy,    accent: "text-primary",    ring: "border-primary/25" },
+            { label: "Ganhos",  val: userStats?.wins ?? 0,                                                                 icon: Medal,     accent: "text-emerald-400", ring: "border-emerald-500/25" },
+            { label: "Acerto",  val: `${userStats?.accuracy || 0}%`,                                                       icon: BarChart3, accent: "text-sky-400",     ring: "border-sky-500/25" },
+            { label: "Prêmios", val: `R$\u00a0${totalPrizeWon.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: DollarSign,accent: "text-yellow-400",  ring: "border-yellow-500/25" },
+          ].map((s, i) => (
+            <div key={i} className={`rounded-2xl border ${s.ring} p-2.5 flex flex-col items-center gap-1`} style={{ background: "#121826" }}>
+              <s.icon className={`h-4 w-4 ${s.accent}`} />
+              <span className={`text-[13px] font-black tabular-nums leading-none ${s.accent}`}>
+                {statsLoading ? "–" : s.val}
+              </span>
+              <span className="text-[10px] text-muted-foreground leading-none">{s.label}</span>
+            </div>
           ))}
         </div>
 
+        {/* ── Conferência oficial ───────────────────────────── */}
         <LiveSorteioCard userGames={gamesList} />
 
-        <Card className="bg-black/20 mb-4 p-3">
-          <div className="grid grid-cols-1 gap-2">
+        {/* ── Filters ───────────────────────────────────────── */}
+        <div className="rounded-2xl border border-white/10 p-3 space-y-2" style={{ background: "#121826" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Filtrar histórico</p>
+          <div className="grid grid-cols-2 gap-2">
             <Select value={filterLottery} onValueChange={setFilterLottery}>
-              <SelectTrigger><SelectValue placeholder="Modalidade" /></SelectTrigger>
+              <SelectTrigger className="h-9 text-[13px] rounded-xl" style={{ background: "#0B0F19", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <SelectValue placeholder="Modalidade" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas</SelectItem>
                 {(lotteryTypes as any[])?.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.displayName}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input placeholder="Buscar concurso..." value={searchContest} onChange={e => setSearchContest(e.target.value)} />
-            <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+            <Input
+              placeholder="Concurso…"
+              value={searchContest}
+              onChange={e => setSearchContest(e.target.value)}
+              className="h-9 text-[13px] rounded-xl"
+              style={{ background: "#0B0F19", border: "1px solid rgba(255,255,255,0.1)" }}
+            />
           </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            Mostrando {filteredGames.length} de {gamesList.length} jogos
-          </div>
-        </Card>
+          <Input
+            type="date"
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
+            className="h-9 text-[13px] rounded-xl w-full"
+            style={{ background: "#0B0F19", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+          <p className="text-[11px] text-muted-foreground/70">
+            {filteredGames.length} de {gamesList.length} jogo(s)
+          </p>
+        </div>
 
-        <Card className="bg-black/20 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-primary text-base">Histórico de Jogos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {gamesLoading ? (
-              <div className="animate-pulse text-sm text-muted-foreground py-4 text-center">Carregando...</div>
-            ) : (
-              <div className="space-y-3">
-                {filteredGames.length > 0 ? filteredGames.map((game: any, index: number) => (
-                  <Card key={game.id} className="bg-black/20 border-border/50">
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-center mb-2 flex-wrap gap-1">
-                        <div className="flex gap-1.5 flex-wrap">
-                          <Badge variant="secondary" className="text-xs">{getLotteryName(game.lotteryId)}</Badge>
-                          <Badge variant="outline" className="text-xs">#{game.contestNumber}</Badge>
-                          {(game.status === "aguardando_sorteio" || game.status === "pending") ? (
-                            <Badge className="text-xs bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse inline-block" />
-                              Aguardando sorteio
-                            </Badge>
-                          ) : game.status === "conferido" ? (
-                            <Badge className="text-xs bg-green-500/20 text-green-300 border border-green-500/40">Conferido</Badge>
-                          ) : game.status === "sorteado" ? (
-                            <Badge className="text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40">Sorteado</Badge>
-                          ) : null}
-                        </div>
-                        <div className={`text-sm font-bold ${getMatchesColor(game.matches, game.prizeWon)}`}>
-                          R$ {parseFloat(game.prizeWon || "0").toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {game.selectedNumbers.map((num: number) => (
-                          <NumberBall key={num} number={num} size="xs" />
-                        ))}
-                      </div>
-                      {(game.status === "aguardando_sorteio" || game.status === "pending") && (
-                        <p className="text-[11px] text-yellow-400/70 mt-2 bg-yellow-500/10 rounded-md px-2 py-1">
-                          Jogo vinculado ao concurso <strong>#{game.contestNumber}</strong>. Conferência disponível após o sorteio oficial.
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                )) : (
-                  <div className="text-center py-10 text-muted-foreground text-sm">
-                    Nenhum jogo encontrado com os filtros aplicados.
+        {/* ── Games list ────────────────────────────────────── */}
+        <div className="space-y-2.5">
+          <h2 className="text-[15px] font-bold text-white px-0.5">Histórico de Jogos</h2>
+
+          {gamesLoading ? (
+            <div className="rounded-2xl border border-white/10 p-8 text-center text-sm text-muted-foreground animate-pulse" style={{ background: "#121826" }}>
+              Carregando jogos…
+            </div>
+          ) : filteredGames.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 p-10 text-center" style={{ background: "#121826" }}>
+              <Trophy className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-[14px] text-muted-foreground">Nenhum jogo encontrado</p>
+              <p className="text-[12px] text-muted-foreground/60 mt-1">Ajuste os filtros ou gere novos jogos</p>
+            </div>
+          ) : (
+            filteredGames.map((game: any) => {
+              const prize = parseFloat(game.prizeWon || "0");
+              const isWinner = prize > 0;
+              const isPending = game.status === "aguardando_sorteio" || game.status === "pending";
+              return (
+                <div
+                  key={game.id}
+                  className={`rounded-2xl border p-3.5 space-y-2.5 transition-all ${
+                    isWinner   ? "border-yellow-500/40 bg-yellow-500/5" :
+                    isPending  ? "border-white/10" :
+                    "border-white/8"
+                  }`}
+                  style={!isWinner ? { background: "#121826" } : undefined}
+                >
+                  {/* top row */}
+                  <div className="flex items-center justify-between flex-wrap gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[12px] font-bold text-foreground/90">{getLotteryName(game.lotteryId)}</span>
+                      <span className="text-[11px] text-muted-foreground">#{game.contestNumber}</span>
+                      {isPending ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300 border border-yellow-500/30">
+                          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                          Aguardando
+                        </span>
+                      ) : game.status === "conferido" ? (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Conferido</span>
+                      ) : game.status === "sorteado" ? (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Sorteado</span>
+                      ) : null}
+                    </div>
+                    <span className={`text-[13px] font-black tabular-nums ${isWinner ? "text-yellow-400" : "text-muted-foreground/50"}`}>
+                      R$ {prize.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                  {/* numbers */}
+                  <div className="flex flex-wrap gap-1">
+                    {game.selectedNumbers.map((num: number) => (
+                      <NumberBall key={num} number={num} size="xs" />
+                    ))}
+                  </div>
+
+                  {/* pending notice */}
+                  {isPending && (
+                    <p className="text-[11px] text-yellow-400/70 bg-yellow-500/8 rounded-xl px-2.5 py-1.5">
+                      Concurso <strong className="text-yellow-300">#{game.contestNumber}</strong> — conferência após o sorteio oficial.
+                    </p>
+                  )}
+
+                  {/* date + strategy footer */}
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground/50 pt-0.5 border-t border-white/5">
+                    <span>{new Date(game.createdAt).toLocaleDateString('pt-BR')}</span>
+                    {game.strategy && <span className="capitalize">{game.strategy}</span>}
+                    {game.hits != null && game.hits > 0 && (
+                      <span className="text-emerald-400/70 font-semibold ml-auto">{game.hits} acerto{game.hits !== 1 ? 's' : ''}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </main>
       <CelebrationAnimation isVisible={showCelebration} prizeAmount={celebrationPrize} onComplete={() => setShowCelebration(false)} />
     </div>

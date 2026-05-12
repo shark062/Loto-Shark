@@ -59,18 +59,22 @@ export default function Statistics() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24">
-      <main className="container mx-auto px-4 pt-6 pb-4 max-w-lg">
+    <div className="min-h-screen text-foreground pb-24" style={{ background: "#0B0F19" }}>
+      <main className="container mx-auto px-4 pt-4 pb-4 max-w-lg">
         {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-2xl font-black text-foreground tracking-tight">Estatísticas</h1>
-          <p className="text-sm text-muted-foreground mt-1">Frequências e análises por modalidade</p>
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="text-[10px] font-bold tracking-widest uppercase text-primary/70">Análise Estatística</span>
+          </div>
+          <h1 className="text-[22px] font-bold leading-tight text-white">Estatísticas</h1>
+          <p className="text-[12px] text-muted-foreground mt-0.5">Frequências e análises por modalidade</p>
         </div>
 
         {/* Lottery selector */}
-        <div className="mb-5">
+        <div className="mb-4">
           <Select value={selectedLotteryId} onValueChange={setSelectedLotteryId}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="h-12 text-[15px] rounded-xl" style={{ background: "#121826", border: "1px solid rgba(255,255,255,0.12)" }}>
               <SelectValue placeholder="Selecione a modalidade" />
             </SelectTrigger>
             <SelectContent>
@@ -82,16 +86,17 @@ export default function Statistics() {
         </div>
 
         {/* Quick links */}
-        <div className="grid grid-cols-2 gap-2 mb-5">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {quickLinks.map(({ label, icon: Icon, path }) => (
             <button
               key={label}
               onClick={() => setLocation(path)}
-              className="flex items-center gap-2.5 bg-white/5 hover:bg-white/8 border border-white/10 rounded-xl px-3 py-2.5 transition-colors text-left"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border border-white/10 hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
+              style={{ background: "#121826" }}
             >
               <Icon className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-xs font-medium text-foreground/80">{label}</span>
-              <ChevronRight className="h-3 w-3 text-muted-foreground ml-auto shrink-0" />
+              <span className="text-[12px] font-semibold text-foreground/80">{label}</span>
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50 ml-auto shrink-0" />
             </button>
           ))}
         </div>

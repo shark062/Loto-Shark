@@ -1,0 +1,126 @@
+/* ── Lottery Ball 3D Animations & Effects ─────────────────── */
+
+@keyframes ball-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ball-selected-pulse {
+  0%, 100% { box-shadow: var(--ball-shadow), 0 0 0 3px #fff, 0 0 12px rgba(255,255,255,0.5); }
+  50%       { box-shadow: var(--ball-shadow), 0 0 0 3px #fff, 0 0 20px rgba(255,255,255,0.8); }
+}
+
+@keyframes ball-shimmer {
+  0%   { opacity: 0.72; }
+  50%  { opacity: 0.95; }
+  100% { opacity: 0.72; }
+}
+
+.lottery-ball {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  user-select: none;
+  flex-shrink: 0;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+  will-change: transform;
+  cursor: default;
+}
+
+.lottery-ball--clickable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lottery-ball--clickable:hover {
+  transform: scale(1.12);
+}
+
+.lottery-ball--clickable:active {
+  transform: scale(0.93);
+}
+
+.lottery-ball--selected {
+  animation: ball-selected-pulse 1.8s ease-in-out infinite;
+}
+
+.lottery-ball--dimmed {
+  opacity: 0.28;
+}
+
+.lottery-ball--pop {
+  animation: ball-pop 0.25s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Specular highlight (upper-left glossy ellipse) */
+.lottery-ball__gloss {
+  position: absolute;
+  top: 6%;
+  left: 8%;
+  width: 42%;
+  height: 30%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.70);
+  filter: blur(3px);
+  transform: rotate(-22deg);
+  pointer-events: none;
+  animation: ball-shimmer 3s ease-in-out infinite;
+}
+
+/* Hot bright specular dot */
+.lottery-ball__specular {
+  position: absolute;
+  top: 10%;
+  left: 16%;
+  width: 16%;
+  height: 11%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  filter: blur(0.8px);
+  pointer-events: none;
+}
+
+/* Bottom edge rim-light */
+.lottery-ball__rim {
+  position: absolute;
+  bottom: 7%;
+  right: 8%;
+  width: 30%;
+  height: 18%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* Number label */
+.lottery-ball__label {
+  position: relative;
+  z-index: 2;
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* Temperature glow rings */
+.lottery-ball--hot  { outline: 2px solid #FF4444; outline-offset: 1px; box-shadow: 0 0 10px rgba(255,68,68,0.55); }
+.lottery-ball--warm { outline: 2px solid #FFCC00; outline-offset: 1px; box-shadow: 0 0 10px rgba(255,204,0,0.55); }
+.lottery-ball--cold { outline: 2px solid #4499FF; outline-offset: 1px; box-shadow: 0 0 10px rgba(68,153,255,0.55); }
+
+/* Sizes */
+.lottery-ball--xs   { width: 28px;  height: 28px;  font-size: 9px;  font-weight: 900; }
+.lottery-ball--sm   { width: 34px;  height: 34px;  font-size: 11px; font-weight: 900; }
+.lottery-ball--md   { width: 42px;  height: 42px;  font-size: 14px; font-weight: 900; }
+.lottery-ball--lg   { width: 52px;  height: 52px;  font-size: 17px; font-weight: 900; }
+.lottery-ball--xl   { width: 64px;  height: 64px;  font-size: 21px; font-weight: 900; }
+
+/* Responsive: smaller on mobile */
+@media (max-width: 640px) {
+  .lottery-ball--md  { width: 36px;  height: 36px;  font-size: 12px; }
+  .lottery-ball--lg  { width: 44px;  height: 44px;  font-size: 15px; }
+  .lottery-ball--xl  { width: 54px;  height: 54px;  font-size: 18px; }
+}

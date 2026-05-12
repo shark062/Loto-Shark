@@ -331,7 +331,7 @@ export default function Generator() {
             <h1 className="text-[22px] font-bold leading-tight text-white">Gerador Inteligente</h1>
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-muted-foreground/60 block">14 engines</span>
+            <span className="text-[10px] text-muted-foreground/60 block">26 engines</span>
             <span className="text-[10px] text-primary/50">IA unificada</span>
           </div>
         </div>
@@ -563,7 +563,7 @@ export default function Generator() {
               {[
                 { icon: BarChart3, text: "Analisa os últimos 30 sorteios reais da Caixa" },
                 { icon: Brain,     text: "Gera e valida milhares de combinações candidatas" },
-                { icon: Cpu,       text: "14 engines ativos: entropia, correlação, distribuição, tendência..." },
+                { icon: Cpu,       text: "26 engines ativos: entropia, correlação, distribuição, tendência, MathEngines v2..." },
                 { icon: CheckCircle2, text: "HyperScore classifica cada jogo de 0 a 1000" },
                 { icon: TrendingUp, text: "Seleciona apenas os jogos com maior ROI esperado" },
               ].map(({ icon: Icon, text }, i) => (
